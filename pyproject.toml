@@ -18,13 +18,7 @@ classifiers = [
 dependencies = [
   "tripper==0.2.3",
   "SPARQLWrapper==2.0.0",
-]
-
-[project.optional-dependencies]
-stardog = [
-  "tripper==0.2.3",
-  "SPARQLWrapper==2.0.0",
-  "pystardog==0.14.0",
+  "pystardog==0.14.0"
 ]
 
 [project.urls]

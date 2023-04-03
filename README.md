@@ -4,7 +4,9 @@
 ---
 ## Triplestore supported
 PyBackTrip currently supports the following triplestore solutions:
-* Stardog
+| Triplestore | Backend Name |
+| ----------- | ----------- |
+| Stardog | stardog |
 ---
 
 ## Installation
@@ -12,12 +14,6 @@ PyBackTrip relies on the dependencies of the specific triplestores supported. Th
 
 ```python
 pip install .
-```
-
-Alternatively, in case you are interested in just one of the possible backends, you can install it explicitly by using its name
-
-```python
-pip install .[stardog]
 ```
 
 ---
