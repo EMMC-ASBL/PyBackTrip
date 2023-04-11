@@ -34,9 +34,14 @@ Each backend may have its own configuration in the Triplestore class. This secti
 ```python
 from tripper import Triplestore
 
-ts = Triplestore(backend="stardog", base_iri="http://localhost:5820", database="database")
+ts = Triplestore(backend = "stardog", 
+                 base_iri = "http://example.com/myontology#", 
+                 triplestore_url = "http://localhost:5820", 
+                 database = "database"
+)
 ```
-* **base_iri**: the Stardog service endpoint
+* **base_iri**: the base IRI to start with (if it is not defined)
+* **triplestore_url**: the Stardog service endpoint
 * **database**: the name of the database to use
 
 
