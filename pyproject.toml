@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pybacktrip"
+version = "0.0.1"
+description = "Backends implementation for Tripper"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  {name = "Alessandro Calvio", email = "alessandro.calvio@unibo.it"}
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python"
+]
+dependencies = [
+  "tripper==0.2.3",
+  "SPARQLWrapper==2.0.0",
+  "pystardog==0.14.0"
+]
+
+[project.urls]
+repository = "https://github.com/xAlessandroC/PyBackTrip"
+
+[project.entry-points."tripper.backends"]
+stardog = "pybacktrip.backends.stardog"
