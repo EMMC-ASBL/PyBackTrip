@@ -35,7 +35,7 @@ class Stardog_TestCase(unittest.TestCase):
         self.__database_name = "stardog_test"
         self.__database = self.__admin.new_database(self.__database_name)
         self.__connection = stardog.Connection(self.__database_name, **self.__connection_details)
-        self.__triplestore: StardogStrategy = StardogStrategy(base_iri=self.__endpoint, database=self.__database_name)
+        self.__triplestore: StardogStrategy = StardogStrategy(base_iri="http://example.com/ontology#", triplestore_url = self.__endpoint, database=self.__database_name)
         self.__existing_namespaces = self.__database.namespaces() # type: ignore
 
     @classmethod
@@ -57,14 +57,14 @@ class Stardog_TestCase(unittest.TestCase):
     ## Unit test
 
     def test_list_databases(self):
-        databases = StardogStrategy.list_databases()
+        databases = StardogStrategy.list_databases(self.__endpoint)
         self.assertEqual(len(databases), len(self.__existing_databases) + 1)
         self.assertCountEqual(databases, self.__existing_databases + [self.__database_name])
 
 
     def test_create_database(self):
         new_database_name = "stardog_test_creation"
-        creation_response = StardogStrategy.create_database(new_database_name)
+        creation_response = StardogStrategy.create_database(self.__endpoint, new_database_name)
         new_databases = list(map(lambda x : x.name ,  self.__admin.databases()))
         self.assertIsNone(creation_response)
         self.assertEqual(len(new_databases), len(self.__existing_databases) + 2)
@@ -72,7 +72,7 @@ class Stardog_TestCase(unittest.TestCase):
 
 
     def test_remove_database(self):
-        deletion_response = StardogStrategy.remove_database(self.__database_name)
+        deletion_response = StardogStrategy.remove_database(self.__endpoint, self.__database_name)
         new_databases = list(map(lambda x : x.name ,  self.__admin.databases()))
         self.assertIsNone(deletion_response)
         self.assertEqual(len(new_databases), len(self.__existing_databases))

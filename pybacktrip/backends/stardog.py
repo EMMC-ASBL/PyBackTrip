@@ -13,9 +13,6 @@ if TYPE_CHECKING:
     from tripper.triplestore import Triple
 
 
-TRIPLESTORE_HOST = "localhost"
-TRIPLESTORE_PORT = "5820"
-
 class StardogStrategy():
 
     ## Class attributes
@@ -34,30 +31,41 @@ class StardogStrategy():
 
     __sparql_endpoints = {}
 
-    def __init__(self, base_iri: str, database: str, **kwargs) -> None:
+    def __init__(self, base_iri: str, triplestore_url: str, database: str, **kwargs) -> None:
+
         self.__uname = self.__default_uname
         self.__pwd = self.__default_pwd
         self.__database_name = database
-        self.__admin = stardog.Admin(endpoint = base_iri)
+        self.__admin = stardog.Admin(endpoint = triplestore_url)
         self.__database = self.__admin.database(database)
         self.__connection_details = {
-            'endpoint': base_iri,
+            'endpoint': triplestore_url,
             'username': self.__uname,
             'password': self.__pwd
         }
 
         ## Setting SPARQLWrapper system
-        stardog_query_endpoint = "{}/{}/query".format(base_iri, database)
+        stardog_query_endpoint = "{}/{}/query".format(triplestore_url, database)
         __sparql_query = SPARQLWrapper(endpoint=stardog_query_endpoint, **kwargs)
         __sparql_query.setCredentials(self.__uname, self.__pwd)
         self.__sparql_endpoints["query"] = __sparql_query
 
-        stardog_update_endpoint = "{}/{}/update".format(base_iri, database)
+        stardog_update_endpoint = "{}/{}/update".format(triplestore_url, database)
         __sparql_update = SPARQLWrapper(endpoint=stardog_update_endpoint, **kwargs)
         __sparql_update.setCredentials(self.__uname, self.__pwd)
         self.__sparql_endpoints["update"] = __sparql_update
 
         self.__set_sparql_endpoint("query")
+
+        if base_iri:
+            namespaces = self.__database.namespaces()
+            current_base = None
+            for namespace in namespaces:
+                if namespace["prefix"] == "":
+                    current_base = namespace["name"]
+
+            if current_base is None:
+                self.__database.add_namespace("", base_iri)
 
         try:
             self.__connection = stardog.Connection(self.__database_name, **self.__connection_details)
@@ -66,8 +74,8 @@ class StardogStrategy():
 
 
     @classmethod
-    def list_databases(cls, **kwargs):
-        __stardog_endpoint = "http://{}:{}".format(TRIPLESTORE_HOST, TRIPLESTORE_PORT)
+    def list_databases(cls, triplestore_url: str, **kwargs):
+        __stardog_endpoint = triplestore_url
         __admin: stardog.Admin = stardog.Admin(endpoint=__stardog_endpoint)
         databases = []
 
@@ -80,20 +88,20 @@ class StardogStrategy():
 
 
     @classmethod
-    def create_database(cls, database: str, **kwargs):
-        __stardog_endpoint = "http://{}:{}".format(TRIPLESTORE_HOST, TRIPLESTORE_PORT)
+    def create_database(cls, triplestore_url: str, database: str, **kwargs):
+        __stardog_endpoint = triplestore_url
         __admin: stardog.Admin = stardog.Admin(endpoint=__stardog_endpoint)
 
         databases = list(map(lambda x : x.name ,__admin.databases()))
         if not database in databases: 
-            __admin.new_database(database)
+            db = __admin.new_database(database)
         else:
             print("Database {} already exists".format(database))
 
 
     @classmethod
-    def remove_database(cls, database: str, **kwargs):
-        __stardog_endpoint = "http://{}:{}".format(TRIPLESTORE_HOST, TRIPLESTORE_PORT)
+    def remove_database(cls, triplestore_url: str, database: str, **kwargs):
+        __stardog_endpoint = triplestore_url
         __admin: stardog.Admin = stardog.Admin(endpoint=__stardog_endpoint)
 
         databases = list(map(lambda x : x.name , __admin.databases()))
