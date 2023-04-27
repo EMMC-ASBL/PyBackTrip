@@ -36,7 +36,7 @@ class StardogStrategy():
         self.__uname = kwargs.pop('uname', self.__default_uname)
         self.__pwd = kwargs.pop('pwd', self.__default_pwd)
         self.__database_name = database
-        self.__admin = stardog.Admin(endpoint = triplestore_url)
+        self.__admin = stardog.Admin(endpoint = triplestore_url, username=self.__uname, password=self.__pwd)
         self.__database = self.__admin.database(database)
         self.__connection_details = {
             'endpoint': triplestore_url,
@@ -76,7 +76,9 @@ class StardogStrategy():
     @classmethod
     def list_databases(cls, triplestore_url: str, **kwargs):
         __stardog_endpoint = triplestore_url
-        __admin: stardog.Admin = stardog.Admin(endpoint=__stardog_endpoint)
+        __uname = kwargs.pop('uname', cls.__default_uname)
+        __pwd = kwargs.pop('pwd', cls.__default_pwd)
+        __admin: stardog.Admin = stardog.Admin(endpoint=__stardog_endpoint, username=__uname, password=__pwd)
         databases = []
 
         try:
@@ -90,7 +92,9 @@ class StardogStrategy():
     @classmethod
     def create_database(cls, triplestore_url: str, database: str, **kwargs):
         __stardog_endpoint = triplestore_url
-        __admin: stardog.Admin = stardog.Admin(endpoint=__stardog_endpoint)
+        __uname = kwargs.pop('uname', cls.__default_uname)
+        __pwd = kwargs.pop('pwd', cls.__default_pwd)
+        __admin: stardog.Admin = stardog.Admin(endpoint=__stardog_endpoint, username=__uname, password=__pwd)
 
         databases = list(map(lambda x : x.name ,__admin.databases()))
         if not database in databases: 
@@ -102,7 +106,9 @@ class StardogStrategy():
     @classmethod
     def remove_database(cls, triplestore_url: str, database: str, **kwargs):
         __stardog_endpoint = triplestore_url
-        __admin: stardog.Admin = stardog.Admin(endpoint=__stardog_endpoint)
+        __uname = kwargs.pop('uname', cls.__default_uname)
+        __pwd = kwargs.pop('pwd', cls.__default_pwd)
+        __admin: stardog.Admin = stardog.Admin(endpoint=__stardog_endpoint, username=__uname, password=__pwd)
 
         databases = list(map(lambda x : x.name , __admin.databases()))
         if not database in databases: 
