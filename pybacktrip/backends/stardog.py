@@ -33,8 +33,8 @@ class StardogStrategy():
 
     def __init__(self, base_iri: str, triplestore_url: str, database: str, **kwargs) -> None:
 
-        self.__uname = self.__default_uname
-        self.__pwd = self.__default_pwd
+        self.__uname = kwargs.pop('uname', self.__default_uname)
+        self.__pwd = kwargs.pop('pwd', self.__default_pwd)
         self.__database_name = database
         self.__admin = stardog.Admin(endpoint = triplestore_url)
         self.__database = self.__admin.database(database)
