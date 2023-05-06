@@ -123,16 +123,33 @@ class Stardog_TestCase(unittest.TestCase):
         self.assertCountEqual(triples, triple_1 + triple_2 + triple_3)
 
 
+    def test_add_triples_differentformat(self):
+        triple_1 = [(":FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb", "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>", "<http://www.w3.org/2002/07/owl#Class>")]
+
+        self.__triplestore.add_triples(triple_1)
+
+        query_result = self.__connection.select("SELECT ?s ?p ?o WHERE { ?s ?p ?o . }", reasoning=False)
+        triples = self.parseQueryResult(query_result) # type: ignore
+        # converted_triples = self.normalizeTriples(triples)
+
+        self.assertEqual(len(triples), 1)
+
+
     def test_triples(self):
         triple_1 = [("<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>", "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>", "<http://www.w3.org/2002/07/owl#Class>")]
         triple_2 = [("<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>", "<http://www.w3.org/2000/01/rdf-schema#subClassOf>","<http://onto-ns.com/ontologies/examples/food#FOOD_d2741ae5_f200_4873_8f72_ac315917c41b>")]
         triple_3 = [("<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>", "<http://www.w3.org/2004/02/skos/core#prefLabel>", "\"Carrot\"@en")]
         to_add = triple_1 + triple_2 + triple_3
 
+        self.__database.remove_namespace("") # type:ignore
+        self.__database.remove_namespace("stardog") # type:ignore
+        self.__database.add_namespace("", "http://onto-ns.com/ontologies/examples/food#") # type:ignore
+
         self.__connection.begin()
         for triple in to_add:
             self.__connection.add(stardog.content.Raw("{} {} {}".format(*triple), "text/turtle"))
         self.__connection.commit()
+
 
         triples_set_1 = list(self.__triplestore.triples((None, "<http://www.w3.org/2004/02/skos/core#prefLabel>", None))) # type: ignore
         converted_triples_set_1 = self.normalizeTriples(triples_set_1)
@@ -306,3 +323,6 @@ class Stardog_TestCase(unittest.TestCase):
         if value.startswith("<"):
             value = value[1:-1]
         return URIRef(value).n3()
+
+
+

@@ -131,6 +131,8 @@ class StardogStrategy():
             if triple_value is None
             else triple_value
             if triple_value.startswith("<")
+            else "<{}{}>".format(self.__getBaseNamespace(), triple_value[1:])
+            if triple_value.startswith(":")
             else f"<{triple_value}>"
             for triple_name, triple_value in zip("spo", triple)
         )
@@ -161,6 +163,8 @@ class StardogStrategy():
                 if isinstance(value, Literal)
                 else value
                 if value.startswith("<") or value.startswith("\"")
+                else "<{}{}>".format(self.__getBaseNamespace(), value[1:])
+                if value.startswith(":")
                 else f"<{value}>"
                 for value in triple
             )
@@ -184,6 +188,8 @@ class StardogStrategy():
             if isinstance(value, Literal)
             else value
             if value.startswith("<") or value.startswith("\"")
+            else "<{}{}>".format(self.__getBaseNamespace(), value[1:])
+                if value.startswith(":")
             else f"<{value}>"
             for name, value in zip("spo", triple)
         )
@@ -299,7 +305,10 @@ class StardogStrategy():
 
     def __convert_json_entrydict(self, entrydict: "Dict[str, str]") -> str:  # type: ignore
         if entrydict["type"] == "uri":
-            return entrydict["value"]
+            if entrydict["value"].startswith(":"):
+                return "<{}{}>".format(self.__getBaseNamespace(), entrydict["value"][1:])
+            else:
+                return entrydict["value"]
 
         if entrydict["type"] == "literal":
             return Literal(
@@ -316,3 +325,10 @@ class StardogStrategy():
             )
 
         raise ValueError(f"unexpected type in entrydict: {entrydict}")
+    
+
+    def __getBaseNamespace(self):
+        namespaces = self.__database.namespaces() #type: ignore
+        for namespace in namespaces:
+            if namespace["prefix"] == "":
+                return namespace["name"]
