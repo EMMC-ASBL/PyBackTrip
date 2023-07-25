@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybacktrip"
-version = "0.0.1"
+version = "1.0.0"
 description = "Backends implementation for Tripper"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -16,9 +16,9 @@ classifiers = [
   "Programming Language :: Python"
 ]
 dependencies = [
-  "tripper==0.2.4",
-  "SPARQLWrapper==2.0.0",
-  "pystardog==0.14.0"
+  "tripper>=0.2.4",
+  "SPARQLWrapper>=2.0.0",
+  "pystardog>=0.14.0"
 ]
 
 [project.urls]
