@@ -1,5 +1,7 @@
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
+
+import requests
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -8,41 +10,165 @@ else:
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Sequence
-    from typing import Generator, Optional
+    from typing import Generator
 
     from tripper.triplestore import Triple
 
 
 class FusekiStrategy(Protocol):
-    def __init__(self, base_iri: "Optional[str]" = None, **kwargs):
+    __baseNamespace__ = ""
+    __graphName__ = ""
+    __sparqlEndpoint__ = ""
+
+    def __init__(
+        self,
+        baseIri: str,
+        triplestoreUrl: str,
+        database: str,
+        graph: str = "",
+        **kwargs: object,
+    ) -> None:
         """Initialise triplestore.
 
-        Arguments:
-            base_iri: Optional base IRI to initiate the triplestore from.
-            kwargs: Additional keyword arguments passed to the backend.
+        Args:
+            baseIri (str): Optional base IRI to initiate the triplestore from.
+            triplestoreUrl (str): URL of the Triplestore.
+            database (str): Database of the Triplestore to be used.
+            graph (str, optional): Graph of the Triplestore to be used. Defaults to ''.
+            kwargs (object): Additional keyword arguments passed to the backend.
         """
 
-    def triples(self, triple: "Triple") -> "Generator":
-        """Returns a generator over matching triples.
+        self.__baseNamespace__ = baseIri
+        self.__graphName__ = graph
+        self.__sparqlEndpoint__ = f"{triplestoreUrl/database}"
 
-        Arguments:
-            triple: A `(s, p, o)` tuple where `s`, `p` and `o` should
+    def triples(self, triple: Triple) -> Generator:
+        """Execute query on triples
+
+        Args:
+            triple (Triple): A `(s, p, o)` tuple where `s`, `p` and `o` should
                 either be None (matching anything) or an exact IRI to
                 match.
+
+        Yields:
+            Generator: Matching triples
         """
 
-    def add_triples(self, triples: "Sequence[Triple]"):
+        variables = [
+            f"?{tripleName}"
+            for tripleName, tripleValue in zip("spo", triple)
+            if tripleValue is None
+        ]
+        if not variables:
+            variables.append("*")
+        whereSpec = " ".join(
+            f"?{tripleName}"
+            if tripleValue is None
+            else tripleValue
+            if tripleValue.startswith("<")
+            else "<{}{}>".format(self.__baseNamespace__, tripleValue[1:])
+            if tripleValue.startswith(":")
+            else f"<{tripleValue}>"
+            for tripleName, tripleValue in zip("spo", triple)
+        )
+        cmd = f"""
+            SELECT {" ".join(variables)}
+            FROM <{self.__graphName__}>
+            WHERE {{{whereSpec}}}
+        """
+
+        res = self.__request("GET", cmd)
+
+        for binding in res["results"]["bindings"]:  # type: ignore
+            yield tuple(
+                self.__convert_json_entrydict(binding[name]) if name in binding else value  # type: ignore
+                for name, value in zip("spo", triple)
+            )
+
+    def addTriples(self, triples: Sequence[Triple]) -> dict:
         """Add a sequence of triples.
 
-        Arguments:
-            triples: A sequence of `(s, p, o)` tuples to add to the
+        Args:
+            triples (Sequence[Triple]): A sequence of `(s, p, o)` tuples to add to the
                 triplestore.
+
+        Returns:
+            dict: The result of the operation
+        """
+        spec = " ".join(
+            "  "
+            + " ".join(
+                value.n3()
+                if isinstance(value, Literal)
+                else value
+                if value.startswith("<") or value.startswith('"')
+                else "<{}{}>".format(self.__baseNamespace__, value[1:])
+                if value.startswith(":")
+                else f"<{value}>"
+                for value in triple
+            )
+            + " ."
+            for triple in triples
+        )
+        cmd = f"INSERT DATA {{ GRAPH {self.__graphName__} {{ {spec} }} }}"
+        return self.__request("POST", cmd)
+
+    def remove(self, triple: Triple) -> dict:
+        """Remove all matching triples from the backend.
+
+        Args:
+            triple (Triple): A `(s, p, o)` tuple where `s`, `p` and `o` should
+                either be None (matching anything) or an exact IRI to
+                match.
+
+        Returns:
+            dict: The result of the operation
         """
 
-    def remove(self, triple: "Triple"):
-        """Remove all matching triples from the backend."""
+        spec = " ".join(
+            f"?{name}"
+            if value is None
+            else value.n3()
+            if isinstance(value, Literal)
+            else value
+            if value.startswith("<") or value.startswith('"')
+            else "<{}{}>".format(self.__baseNamespace__, value[1:])
+            if value.startswith(":")
+            else f"<{value}>"
+            for name, value in zip("spo", triple)
+        )
+        cmd = f"DELETE WHERE {{ GRAPH {self.__graphName__} { spec } }}"
+        return self.__request("POST", cmd)
 
-    
+    # PRIVATE METHODS
+
+    def __request(self, method: Literal["GET", "POST"], cmd: str = "") -> dict:
+        """Generic REST method caller for the Triplestore
+
+        Args:
+            method (Literal["GET", "POST"]): Method of the request.
+            cmd (str, optional): Command to be executed. Defaults to "".
+
+        Returns:
+            dict: Response or prints an error in case of problems
+        """
+
+        if method not in ["GET", "POST"]:
+            print("Method not known")
+            return None
+
+        try:
+            r: requests.Response = requests.request(
+                method=method,
+                url=self.__sparqlEndpoint__,
+                params=({"query": cmd} if method == "GET" else None),
+                data=({"update": cmd} if method == "POST" else None),
+            )
+            r.raise_for_status()
+            return r.json() if r.status_code == 200 else {}
+        except requests.RequestException as e:
+            print(e)
+
     '''Interface for triplestore backends.
 
     In addition to the methods specified by this interface, a backend
