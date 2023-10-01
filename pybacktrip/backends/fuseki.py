@@ -1,12 +1,10 @@
-import sys
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import IO, TYPE_CHECKING
+from typing import Literal as L
+from typing import Protocol, Union
 
 import requests
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
+from tripper import Literal
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Sequence
@@ -40,7 +38,7 @@ class FusekiStrategy(Protocol):
 
         self.__baseNamespace__ = baseIri
         self.__graphName__ = graph
-        self.__sparqlEndpoint__ = f"{triplestoreUrl/database}"
+        self.__sparqlEndpoint__ = f"{triplestoreUrl}/{database}"
 
     def triples(self, triple: Triple) -> Generator:
         """Execute query on triples
@@ -77,15 +75,15 @@ class FusekiStrategy(Protocol):
             WHERE {{{whereSpec}}}
         """
 
-        res = self.__request("GET", cmd)
+        res: dict = self.__request("GET", cmd)
 
-        for binding in res["results"]["bindings"]:  # type: ignore
+        for binding in res["results"]["bindings"]:
             yield tuple(
-                self.__convert_json_entrydict(binding[name]) if name in binding else value  # type: ignore
+                self.__convertJsonEntrydict(binding[name]) if name in binding else value
                 for name, value in zip("spo", triple)
             )
 
-    def addTriples(self, triples: Sequence[Triple]) -> dict:
+    def addTriples(self, triples: Sequence[Triple]) -> object:
         """Add a sequence of triples.
 
         Args:
@@ -99,7 +97,7 @@ class FusekiStrategy(Protocol):
             "  "
             + " ".join(
                 value.n3()
-                if isinstance(value, Literal)
+                if isinstance(value, Literal) and hasattr(value, "n3")
                 else value
                 if value.startswith("<") or value.startswith('"')
                 else "<{}{}>".format(self.__baseNamespace__, value[1:])
@@ -113,7 +111,7 @@ class FusekiStrategy(Protocol):
         cmd = f"INSERT DATA {{ GRAPH {self.__graphName__} {{ {spec} }} }}"
         return self.__request("POST", cmd)
 
-    def remove(self, triple: Triple) -> dict:
+    def remove(self, triple: Triple) -> object:
         """Remove all matching triples from the backend.
 
         Args:
@@ -140,9 +138,59 @@ class FusekiStrategy(Protocol):
         cmd = f"DELETE WHERE {{ GRAPH {self.__graphName__} { spec } }}"
         return self.__request("POST", cmd)
 
+    def parse(
+        self,
+        source: Union[str, Path, IO] = "",
+        location: str = "",
+        data: str = "",
+        format: str = "",
+        **kwargs,
+    ):
+        """Parse source and add the resulting triples to triplestore.
+
+        The source is specified using one of `source`, `location` or `data`.
+
+        Arguments:
+            source: File-like object or file name.
+            location: String with relative or absolute URL to source.
+            data: String containing the data to be parsed.
+            format: Needed if format can not be inferred from source.
+            kwargs: Additional backend-specific parameters controlling
+                the parsing.
+        """
+
+    def serialize(
+        self, destination: Union[str, Path, IO] = "", format: str = "xml", **kwargs
+    ):
+        """Serialise to destination.
+
+        Arguments:
+            destination: File name or object to write to.  If None, the
+                serialisation is returned.
+            format: Format to serialise as.  Supported formats, depends on
+                the backend.
+            kwargs: Additional backend-specific parameters controlling
+                the serialisation.
+
+        Returns:
+            Serialised string if `destination` is None.
+        """
+
+    def query(self, query_object: str, **kwargs) -> list:
+        """SPARQL query.
+
+        Arguments:
+            query_object: String with the SPARQL query.
+            kwargs: Additional backend-specific keyword arguments.
+
+        Returns:
+            List of tuples of IRIs for each matching row.
+        """
+        return []
+
     # PRIVATE METHODS
 
-    def __request(self, method: Literal["GET", "POST"], cmd: str = "") -> dict:
+    def __request(self, method: L["GET", "POST"], cmd: str = "") -> dict:
         """Generic REST method caller for the Triplestore
 
         Args:
@@ -155,7 +203,7 @@ class FusekiStrategy(Protocol):
 
         if method not in ["GET", "POST"]:
             print("Method not known")
-            return None
+            return {}
 
         try:
             r: requests.Response = requests.request(
@@ -168,6 +216,41 @@ class FusekiStrategy(Protocol):
             return r.json() if r.status_code == 200 else {}
         except requests.RequestException as e:
             print(e)
+            return {}
+
+    def __convertJsonEntrydict(self, entrydict: dict) -> str:
+        """Convert JSON entry dict in string format
+
+        Args:
+            entrydict (dict): Entry dict to be converted
+
+        Raises:
+            ValueError: Unexpected type in entrydict
+
+        Returns:
+            str: The entry dict correctly formatted as a string
+        """
+        if entrydict["type"] == "uri":
+            if entrydict["value"].startswith(":"):
+                return "<{}{}>".format(self.__baseNamespace__, entrydict["value"][1:])
+            else:
+                return entrydict["value"]
+
+        if entrydict["type"] == "literal":
+            return Literal(
+                entrydict["value"],
+                lang=entrydict.get("xml:lang"),
+                datatype=entrydict.get("datatype"),
+            )
+
+        if entrydict["type"] == "bnode":
+            return (
+                entrydict["value"]
+                if entrydict["value"].startswith("_:")
+                else f"_:{entrydict['value']}"
+            )
+
+        raise ValueError(f"Unexpected type in entrydict: {entrydict}")
 
     '''Interface for triplestore backends.
 
