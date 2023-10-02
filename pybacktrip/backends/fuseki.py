@@ -1,3 +1,4 @@
+from io import BufferedReader
 from pathlib import Path
 from typing import IO, TYPE_CHECKING
 from typing import Literal as L
@@ -14,16 +15,19 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class FusekiStrategy(Protocol):
-    __baseNamespace__ = ""
-    __graphName__ = ""
-    __sparqlEndpoint__ = ""
+    __GRAPH = "graph://main"
+    __CONTENT_TYPES = {"turtle": "text/turtle", "rdf": "application/rdf+xml"}
+
+    __base_namespace = ""
+    __sparql_endpoint = ""
+
+    # DEFAULT METHODS
 
     def __init__(
         self,
-        baseIri: str,
-        triplestoreUrl: str,
+        base_iri: str,
+        triplestore_url: str,
         database: str,
-        graph: str = "",
         **kwargs: object,
     ) -> None:
         """Initialise triplestore.
@@ -32,13 +36,11 @@ class FusekiStrategy(Protocol):
             baseIri (str): Optional base IRI to initiate the triplestore from.
             triplestoreUrl (str): URL of the Triplestore.
             database (str): Database of the Triplestore to be used.
-            graph (str, optional): Graph of the Triplestore to be used. Defaults to ''.
             kwargs (object): Additional keyword arguments passed to the backend.
         """
 
-        self.__baseNamespace__ = baseIri
-        self.__graphName__ = graph
-        self.__sparqlEndpoint__ = f"{triplestoreUrl}/{database}"
+        self.__base_namespace = base_iri
+        self.__sparql_endpoint = f"{triplestore_url}/{database}"
 
     def triples(self, triple: Triple) -> Generator:
         """Execute query on triples
@@ -64,22 +66,24 @@ class FusekiStrategy(Protocol):
             if tripleValue is None
             else tripleValue
             if tripleValue.startswith("<")
-            else "<{}{}>".format(self.__baseNamespace__, tripleValue[1:])
+            else "<{}{}>".format(self.__base_namespace, tripleValue[1:])
             if tripleValue.startswith(":")
             else f"<{tripleValue}>"
             for tripleName, tripleValue in zip("spo", triple)
         )
         cmd = f"""
             SELECT {" ".join(variables)}
-            FROM <{self.__graphName__}>
+            FROM <{self.__GRAPH}>
             WHERE {{{whereSpec}}}
         """
 
-        res: dict = self.__request("GET", cmd)
+        res = self.__request("GET", cmd)
 
         for binding in res["results"]["bindings"]:
             yield tuple(
-                self.__convertJsonEntrydict(binding[name]) if name in binding else value
+                self.__convert_json_entrydict(binding[name])
+                if name in binding
+                else value
                 for name, value in zip("spo", triple)
             )
 
@@ -100,7 +104,7 @@ class FusekiStrategy(Protocol):
                 if isinstance(value, Literal) and hasattr(value, "n3")
                 else value
                 if value.startswith("<") or value.startswith('"')
-                else "<{}{}>".format(self.__baseNamespace__, value[1:])
+                else "<{}{}>".format(self.__base_namespace, value[1:])
                 if value.startswith(":")
                 else f"<{value}>"
                 for value in triple
@@ -108,7 +112,7 @@ class FusekiStrategy(Protocol):
             + " ."
             for triple in triples
         )
-        cmd = f"INSERT DATA {{ GRAPH {self.__graphName__} {{ {spec} }} }}"
+        cmd = f"INSERT DATA {{ GRAPH {self.__GRAPH} {{ {spec} }} }}"
         return self.__request("POST", cmd)
 
     def remove(self, triple: Triple) -> object:
@@ -130,20 +134,22 @@ class FusekiStrategy(Protocol):
             if isinstance(value, Literal)
             else value
             if value.startswith("<") or value.startswith('"')
-            else "<{}{}>".format(self.__baseNamespace__, value[1:])
+            else "<{}{}>".format(self.__base_namespace, value[1:])
             if value.startswith(":")
             else f"<{value}>"
             for name, value in zip("spo", triple)
         )
-        cmd = f"DELETE WHERE {{ GRAPH {self.__graphName__} { spec } }}"
+        cmd = f"DELETE WHERE {{ GRAPH {self.__GRAPH} { spec } }}"
         return self.__request("POST", cmd)
+
+    # ADDITIONAL METHODS
 
     def parse(
         self,
-        source: Union[str, Path, IO] = "",
+        source: Union[str, IO] = "",
         location: str = "",
         data: str = "",
-        format: str = "",
+        format: str = "turtle",
         **kwargs,
     ):
         """Parse source and add the resulting triples to triplestore.
@@ -159,22 +165,55 @@ class FusekiStrategy(Protocol):
                 the parsing.
         """
 
+        content = None
+
+        if format not in self.__CONTENT_TYPES:
+            raise Exception("Format not supported")
+
+        if source:
+            if isinstance(source, str):
+                content = open(source, "rb")
+            else:
+                content = source.read()
+        elif location:
+            content = open(location, "rb")
+        elif data:
+            content = data
+        else:
+            raise Exception(
+                "Error during argument checking\nOnly one among source, location and data must be provided\n"
+            )
+
+        headers = {"Content-type": f"{self.__CONTENT_TYPES[format]}"}
+        self.__request("POST", content, headers, True, True)
+
     def serialize(
-        self, destination: Union[str, Path, IO] = "", format: str = "xml", **kwargs
-    ):
+        self, destination: Union[str, IO] = "", format: str = "turtle", **kwargs
+    ) -> str:
         """Serialise to destination.
 
         Arguments:
-            destination: File name or object to write to.  If None, the
+            destination: File name or object to write to. If not defined, the
                 serialisation is returned.
-            format: Format to serialise as.  Supported formats, depends on
+            format: Format to serialise as. Supported formats, depends on
                 the backend.
             kwargs: Additional backend-specific parameters controlling
                 the serialisation.
 
         Returns:
-            Serialised string if `destination` is None.
+            Serialised string if `destination` is not defined.
         """
+        content = self.__request("GET", graph=True, json=False)["response"]
+
+        if not destination:
+            return content
+        elif isinstance(destination, str):
+            with open(destination, "w") as f:
+                f.write(content)
+        else:
+            destination.write(content)
+
+        return ""
 
     def query(self, query_object: str, **kwargs) -> list:
         """SPARQL query.
@@ -186,39 +225,83 @@ class FusekiStrategy(Protocol):
         Returns:
             List of tuples of IRIs for each matching row.
         """
-        return []
+
+        queryStr = str(query_object).strip()
+
+        res = self.__request("GET", queryStr)
+
+        queryVars = res["head"]["vars"]
+        queryBindings = res["results"]["bindings"]
+
+        triplesRes = []
+        for binding in queryBindings:
+            currentTriple = ()
+            for var in queryVars:
+                currentTriple = currentTriple + (
+                    self.__convert_json_entrydict(binding[var]),
+                )
+            triplesRes.append(currentTriple)
+
+        return triplesRes
 
     # PRIVATE METHODS
 
-    def __request(self, method: L["GET", "POST"], cmd: str = "") -> dict:
+    def __request(
+        self,
+        method: L["GET", "POST"],
+        cmd: Union[str, BufferedReader] = "",
+        headers: dict = {},
+        plainData: bool = False,
+        graph: bool = False,
+        json: bool = True,
+    ) -> dict:
         """Generic REST method caller for the Triplestore
 
         Args:
             method (Literal["GET", "POST"]): Method of the request.
             cmd (str, optional): Command to be executed. Defaults to "".
+            headers (dict, optional): Custom headers. Defaults to {}.
+            plainData (bool, optional): If data needs a format or is plain. Defaults to False.
+            graph (bool, optional): If the endpoint needs to specify the graph. Defaults to False.
+            json (bool, optional): If the result is a JSON or a dict containing the result as string. Defaults to True.
 
         Returns:
-            dict: Response or prints an error in case of problems
+            dict: Dict containing the result as JSON or text
         """
 
         if method not in ["GET", "POST"]:
             print("Method not known")
             return {}
 
+        ep = (
+            self.__sparql_endpoint
+            if not graph
+            else f"{self.__sparql_endpoint}?graph={self.__GRAPH}"
+        )
+
         try:
             r: requests.Response = requests.request(
                 method=method,
-                url=self.__sparqlEndpoint__,
+                url=ep,
+                headers=headers,
                 params=({"query": cmd} if method == "GET" else None),
-                data=({"update": cmd} if method == "POST" else None),
+                data=(
+                    cmd
+                    if method == "POST" and plainData
+                    else {"update": cmd}
+                    if method == "POST" and not plainData
+                    else None
+                ),
             )
             r.raise_for_status()
-            return r.json() if r.status_code == 200 else {}
+            if r.status_code == 200:
+                return r.json() if json else {"response": r.text}
+            return {}
         except requests.RequestException as e:
             print(e)
             return {}
 
-    def __convertJsonEntrydict(self, entrydict: dict) -> str:
+    def __convert_json_entrydict(self, entrydict: dict) -> str:
         """Convert JSON entry dict in string format
 
         Args:
@@ -232,7 +315,7 @@ class FusekiStrategy(Protocol):
         """
         if entrydict["type"] == "uri":
             if entrydict["value"].startswith(":"):
-                return "<{}{}>".format(self.__baseNamespace__, entrydict["value"][1:])
+                return "<{}{}>".format(self.__base_namespace, entrydict["value"][1:])
             else:
                 return entrydict["value"]
 
