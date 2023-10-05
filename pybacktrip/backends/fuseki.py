@@ -2,7 +2,7 @@ from io import BufferedReader
 from pathlib import Path
 from typing import IO, TYPE_CHECKING
 from typing import Literal as L
-from typing import Protocol, Union
+from typing import Union
 
 import requests
 from tripper import Literal
@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from tripper.triplestore import Triple
 
 
-class FusekiStrategy(Protocol):
+class FusekiStrategy:
     __GRAPH = "graph://main"
     __CONTENT_TYPES = {"turtle": "text/turtle", "rdf": "application/rdf+xml"}
 
@@ -28,7 +28,7 @@ class FusekiStrategy(Protocol):
         base_iri: str,
         triplestore_url: str,
         database: str,
-        **kwargs: object,
+        **kwargs,
     ) -> None:
         """Initialise triplestore.
 
@@ -42,7 +42,7 @@ class FusekiStrategy(Protocol):
         self.__base_namespace = base_iri
         self.__sparql_endpoint = f"{triplestore_url}/{database}"
 
-    def triples(self, triple: Triple) -> Generator:
+    def triples(self, triple: "Triple") -> "Generator":
         """Execute query on triples
 
         Args:
@@ -87,7 +87,7 @@ class FusekiStrategy(Protocol):
                 for name, value in zip("spo", triple)
             )
 
-    def addTriples(self, triples: Sequence[Triple]) -> object:
+    def add_triples(self, triples: "Sequence[Triple]") -> dict:
         """Add a sequence of triples.
 
         Args:
@@ -112,10 +112,10 @@ class FusekiStrategy(Protocol):
             + " ."
             for triple in triples
         )
-        cmd = f"INSERT DATA {{ GRAPH {self.__GRAPH} {{ {spec} }} }}"
+        cmd = f"INSERT DATA {{ GRAPH <{self.__GRAPH}> {{ {spec} }} }}"
         return self.__request("POST", cmd)
 
-    def remove(self, triple: Triple) -> object:
+    def remove(self, triple: "Triple") -> object:
         """Remove all matching triples from the backend.
 
         Args:
@@ -139,8 +139,12 @@ class FusekiStrategy(Protocol):
             else f"<{value}>"
             for name, value in zip("spo", triple)
         )
-        cmd = f"DELETE WHERE {{ GRAPH {self.__GRAPH} { spec } }}"
+        cmd = f"DELETE WHERE {{ GRAPH <{self.__GRAPH}> {{ { spec } }} }}"
+
         return self.__request("POST", cmd)
+
+    def delete_graph(self):
+        requests.delete(f"http://localhost:3030/openmodel?graph={self.__GRAPH}")
 
     # ADDITIONAL METHODS
 
