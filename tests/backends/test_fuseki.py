@@ -47,9 +47,6 @@ class Fuseki_TestCase(unittest.TestCase):
         ontology_file_path_ttl = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
         ontology_file_path_rdf = os.path.abspath("PyBackTrip/tests/ontologies/food.rdf")
 
-        print(ontology_file_path_rdf)
-        print(ontology_file_path_ttl)
-
         self.parseTestSkeleton(
             input_format="turtle",
             input_type="source",
@@ -134,10 +131,7 @@ class Fuseki_TestCase(unittest.TestCase):
         self.triplestore.add_triples(triple_1 + triple_2 + triple_3)
 
         query_result = self.select_all()
-
-        print(query_result)
         triples = self.parseQueryResult(query_result)
-        # converted_triples = self.normalizeTriples(triples)
 
         self.assertEqual(len(triples), 3)
         self.assertCountEqual(triples, triple_1 + triple_2 + triple_3)
