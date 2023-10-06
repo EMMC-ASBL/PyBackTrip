@@ -17,13 +17,6 @@ GRAPH = "graph://main"
 class Fuseki_TestCase(unittest.TestCase):
     ## Initialization
 
-    @classmethod
-    def setUpClass(cls):
-        ## Databases currently on stardog so you can ignore them when running tests
-        ## Access data initialization for PyStardog
-
-        pass
-
     def setUp(self):
         ## Creation of a database for the execution of individual tests
         ## Creating the StardogStrategy class
@@ -34,9 +27,7 @@ class Fuseki_TestCase(unittest.TestCase):
             database="openmodel",
         )
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
+        self.__existing_namespaces = self.triplestore.namespaces().copy()
 
     def tearDown(self):
         self.triplestore.delete_graph()
@@ -53,18 +44,8 @@ class Fuseki_TestCase(unittest.TestCase):
         pass
 
     def test_parse(self):
-        ontology_file_path_ttl = str(
-            Path(
-                str(Path(__file__).parent.parent.resolve())
-                + os.path.sep.join(["", "ontologies", "food.ttl"])
-            )
-        )
-        ontology_file_path_rdf = str(
-            Path(
-                str(Path(__file__).parent.parent.resolve())
-                + os.path.sep.join(["", "ontologies", "food.rdf"])
-            )
-        )
+        ontology_file_path_ttl = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
+        ontology_file_path_rdf = os.path.abspath("PyBackTrip/tests/ontologies/food.rdf")
 
         print(ontology_file_path_rdf)
         print(ontology_file_path_ttl)
@@ -308,45 +289,39 @@ class Fuseki_TestCase(unittest.TestCase):
         )
 
     def test_namespaces(self):
-        pass
-        # namespaces = self.__triplestore.namespaces()
+        namespaces = self.triplestore.namespaces()
 
-        # self.assertEqual(len(namespaces.keys()), len(self.__existing_namespaces))
-        # for namespace in self.__existing_namespaces:
-        #     prefix = namespace["prefix"]
-        #     uri = namespace["name"]
+        self.assertEqual(len(namespaces.keys()), len(self.__existing_namespaces))
+        for k, v in self.__existing_namespaces.items():
+            prefix = k
+            uri = v
 
-        #     self.assertTrue(prefix in namespaces)
-        #     self.assertEqual(uri, namespaces[prefix])
+            self.assertTrue(prefix in namespaces)
+            self.assertEqual(uri, namespaces[prefix])
 
     def test_bind(self):
-        pass
-        # self.__triplestore.bind("food", "http://onto-ns.com/ontologies/examples/food#")
-        # current_namespaces = self.__database.namespaces()  # type:ignore
+        self.triplestore.bind("food", "http://onto-ns.com/ontologies/examples/food#")
+        current_namespaces = self.triplestore.namespaces()
 
-        # self.assertEqual(len(current_namespaces), len(self.__existing_namespaces) + 1)
-        # found = False
-        # for namespace in current_namespaces:
-        #     if (
-        #         namespace["prefix"] == "food"
-        #         and namespace["name"] == "http://onto-ns.com/ontologies/examples/food#"
-        #     ):
-        #         found = True
-        #         break
-        # self.assertTrue(found)
+        self.assertEqual(len(current_namespaces), len(self.__existing_namespaces) + 1)
+        found = False
+        for k, v in current_namespaces.items():
+            if k == "food" and v == "http://onto-ns.com/ontologies/examples/food#":
+                found = True
+                break
+        self.assertTrue(found)
 
     def test_bind_deletion(self):
-        pass
-        # self.__triplestore.bind("owl", None)  # type:ignore
-        # current_namespaces = self.__database.namespaces()  # type:ignore
+        self.triplestore.bind("owl", None)
+        current_namespaces = self.triplestore.namespaces()
 
-        # self.assertEqual(len(current_namespaces), len(self.__existing_namespaces) - 1)
-        # not_found = True
-        # for namespace in current_namespaces:
-        #     if namespace["prefix"] == "owl":
-        #         not_found = False
-        #         break
-        # self.assertTrue(not_found)
+        self.assertEqual(len(current_namespaces), len(self.__existing_namespaces) - 1)
+        not_found = True
+        for k in current_namespaces:
+            if k == "owl":
+                not_found = False
+                break
+        self.assertTrue(not_found)
 
     ## Utils functions
 
@@ -370,15 +345,12 @@ class Fuseki_TestCase(unittest.TestCase):
             with open(ontology_file_path, "r", encoding=input_encoding) as file:
                 self.triplestore.parse(data=file.read(), format=input_format)
 
-        db_content = self.__connection.export(stardog.content_types.TURTLE).decode()  # type: ignore
+        # db_content = self.__connection.export(stardog.content_types.TURTLE).decode()  # type: ignore
+
+        db_content = self.triplestore.serialize()
 
         with open(
-            str(
-                Path(
-                    str(Path(__file__).parent.parent.resolve())
-                    + os.path.sep.join(["", "ontologies", "expected_ontology.ttl"])
-                )
-            ),
+            os.path.abspath("PyBackTrip/tests/ontologies/expected_ontology.ttl"),
             "r",
         ) as out_file:
             expected_serialization = out_file.read()

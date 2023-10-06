@@ -1,5 +1,4 @@
 from io import BufferedReader
-from pathlib import Path
 from typing import IO, TYPE_CHECKING
 from typing import Literal as L
 from typing import Union
@@ -7,7 +6,7 @@ from typing import Union
 import requests
 from tripper import Literal
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Generator
 
@@ -17,8 +16,14 @@ if TYPE_CHECKING:  # pragma: no cover
 class FusekiStrategy:
     __GRAPH = "graph://main"
     __CONTENT_TYPES = {"turtle": "text/turtle", "rdf": "application/rdf+xml"}
+    __DEFAULT_NAMESPACES = {
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "schema": "http://schema.org/",
+    }
 
-    __base_namespace = ""
+    __namespaces = {}
     __sparql_endpoint = ""
 
     # DEFAULT METHODS
@@ -39,7 +44,8 @@ class FusekiStrategy:
             kwargs (object): Additional keyword arguments passed to the backend.
         """
 
-        self.__base_namespace = base_iri
+        self.__namespaces.update(self.__DEFAULT_NAMESPACES)
+        self.__namespaces[""] = base_iri
         self.__sparql_endpoint = f"{triplestore_url}/{database}"
 
     def triples(self, triple: "Triple") -> "Generator":
@@ -66,7 +72,7 @@ class FusekiStrategy:
             if tripleValue is None
             else tripleValue
             if tripleValue.startswith("<")
-            else "<{}{}>".format(self.__base_namespace, tripleValue[1:])
+            else "<{}{}>".format(self.__namespaces[""], tripleValue[1:])
             if tripleValue.startswith(":")
             else f"<{tripleValue}>"
             for tripleName, tripleValue in zip("spo", triple)
@@ -97,14 +103,14 @@ class FusekiStrategy:
         Returns:
             dict: The result of the operation
         """
+
         spec = " ".join(
-            "  "
-            + " ".join(
+            " ".join(
                 value.n3()
                 if isinstance(value, Literal) and hasattr(value, "n3")
                 else value
                 if value.startswith("<") or value.startswith('"')
-                else "<{}{}>".format(self.__base_namespace, value[1:])
+                else "<{}{}>".format(self.__namespaces[""], value[1:])
                 if value.startswith(":")
                 else f"<{value}>"
                 for value in triple
@@ -134,7 +140,7 @@ class FusekiStrategy:
             if isinstance(value, Literal)
             else value
             if value.startswith("<") or value.startswith('"')
-            else "<{}{}>".format(self.__base_namespace, value[1:])
+            else "<{}{}>".format(self.__namespaces[""], value[1:])
             if value.startswith(":")
             else f"<{value}>"
             for name, value in zip("spo", triple)
@@ -207,6 +213,7 @@ class FusekiStrategy:
         Returns:
             Serialised string if `destination` is not defined.
         """
+
         content = self.__request("GET", graph=True, json=False)["response"]
 
         if not destination:
@@ -248,6 +255,29 @@ class FusekiStrategy:
 
         return triplesRes
 
+    def namespaces(self) -> dict:
+        """Get the SPARQL namespaces
+
+        Returns:
+            dict: The SPARQL namespaces as dict
+        """
+
+        return self.__namespaces
+
+    def bind(self, prefix: str, namespace: Union[str, None]):
+        """Bind, update, or remove a SPARQL namespace
+
+        Args:
+            prefix (str): Prefix identifying the namespace
+            namespace (str): URI of the namespace
+        """
+
+        if namespace:
+            self.__namespaces[prefix] = namespace
+        else:
+            if prefix in self.__namespaces:
+                del self.__namespaces[prefix]
+
     # PRIVATE METHODS
 
     def __request(
@@ -274,7 +304,7 @@ class FusekiStrategy:
         """
 
         if method not in ["GET", "POST"]:
-            print("Method not known")
+            print("Method unknown")
             return {}
 
         ep = (
@@ -283,12 +313,18 @@ class FusekiStrategy:
             else f"{self.__sparql_endpoint}?graph={self.__GRAPH}"
         )
 
+        if isinstance(cmd, str):
+            cmd = (
+                " ".join(f"PREFIX {k}: <{v}>" for k, v in self.__namespaces.items())
+                + cmd
+            )
+
         try:
             r: requests.Response = requests.request(
                 method=method,
                 url=ep,
                 headers=headers,
-                params=({"query": cmd} if method == "GET" else None),
+                params=({"query": cmd} if method == "GET" and cmd else None),
                 data=(
                     cmd
                     if method == "POST" and plainData
@@ -317,9 +353,10 @@ class FusekiStrategy:
         Returns:
             str: The entry dict correctly formatted as a string
         """
+
         if entrydict["type"] == "uri":
             if entrydict["value"].startswith(":"):
-                return "<{}{}>".format(self.__base_namespace, entrydict["value"][1:])
+                return "<{}{}>".format(self.__namespaces[""], entrydict["value"][1:])
             else:
                 return entrydict["value"]
 
@@ -338,133 +375,3 @@ class FusekiStrategy:
             )
 
         raise ValueError(f"Unexpected type in entrydict: {entrydict}")
-
-    '''Interface for triplestore backends.
-
-    In addition to the methods specified by this interface, a backend
-    may also implement the following optional methods:
-
-    ```python
-
-    def parse(
-            self,
-            source: Union[str, Path, IO] = None,
-            location: str = None,
-            data: str = None,
-            format: str = None,
-            **kwargs
-        ):
-        """Parse source and add the resulting triples to triplestore.
-
-        The source is specified using one of `source`, `location` or `data`.
-
-        Arguments:
-            source: File-like object or file name.
-            location: String with relative or absolute URL to source.
-            data: String containing the data to be parsed.
-            format: Needed if format can not be inferred from source.
-            kwargs: Additional backend-specific parameters controlling
-                the parsing.
-        """
-
-    def serialize(
-            self,
-            destination: Union[str, Path, IO] = None,
-            format: str ='xml',
-            **kwargs
-        ):
-        """Serialise to destination.
-
-        Arguments:
-            destination: File name or object to write to.  If None, the
-                serialisation is returned.
-            format: Format to serialise as.  Supported formats, depends on
-                the backend.
-            kwargs: Additional backend-specific parameters controlling
-                the serialisation.
-
-        Returns:
-            Serialised string if `destination` is None.
-        """
-
-    def query(self, query_object: str, **kwargs) -> List[Tuple[str, ...]]:
-        """SPARQL query.
-
-        Arguments:
-            query_object: String with the SPARQL query.
-            kwargs: Additional backend-specific keyword arguments.
-
-        Returns:
-            List of tuples of IRIs for each matching row.
-        """
-
-    def update(self, update_object: str, **kwargs):
-        """Update triplestore with SPARQL.
-
-        Arguments:
-            query_object: String with the SPARQL query.
-            kwargs: Additional backend-specific keyword arguments.
-
-        Note:
-            This method is intended for INSERT and DELETE queries.  Use
-            the query() method for SELECT queries.
-        """
-
-    def bind(self, prefix: str, namespace: str) -> Namespace:
-        """Bind prefix to namespace.
-
-        Should only be defined if the backend supports namespaces.
-        """
-
-    def namespaces(self) -> dict:
-        """Returns a dict mapping prefixes to namespaces.
-
-        Should only be defined if the backend supports namespaces.
-        Used by triplestore.parse() to get prefixes after reading
-        triples from an external source.
-        """
-
-    @classmethod
-    def create_database(cls, database: str, **kwargs):
-        """Create a new database in backend.
-
-        Parameters:
-            database: Name of the new database.
-            kwargs: Keyword arguments passed to the backend
-                create_database() method.
-
-        Note:
-            This is a class method, which operates on the backend
-            triplestore without connecting to it.
-        """
-
-    @classmethod
-    def remove_database(cls, database: str, **kwargs):
-        """Remove a database in backend.
-
-        Parameters:
-            database: Name of the database to be removed.
-            kwargs: Keyword arguments passed to the backend
-                remove_database() method.
-
-        Note:
-            This is a class method, which operates on the backend
-            triplestore without connecting to it.
-        """
-
-    @classmethod
-    def list_databases(cls, **kwargs):
-        """For backends that supports multiple databases, list of all
-        databases.
-
-        Parameters:
-            kwargs: Keyword arguments passed to the backend
-                list_database() method.
-
-        Note:
-            This is a class method, which operates on the backend
-            triplestore without connecting to it.
-        """
-
-    ```
-    '''
