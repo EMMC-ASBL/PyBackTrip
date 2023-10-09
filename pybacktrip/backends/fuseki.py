@@ -214,7 +214,9 @@ class FusekiStrategy:
             Serialised string if `destination` is not defined.
         """
 
-        content = self.__request("GET", prefix=False, graph=True, json=False)["response"]
+        content = self.__request("GET", prefix=False, graph=True, json=False)[
+            "response"
+        ]
 
         if not destination:
             return content
