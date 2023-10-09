@@ -1,10 +1,8 @@
 import os
 import unittest
-from pathlib import Path
 
 import requests
 from pybacktrip.backends.fuseki import FusekiStrategy
-from pybacktrip.backends.stardog import StardogStrategy
 from rdflib import BNode, URIRef
 from tripper.literal import Literal
 
@@ -34,76 +32,55 @@ class Fuseki_TestCase(unittest.TestCase):
 
     ## Unit test
 
-    def test_list_databases(self):
-        pass
-
-    def test_create_database(self):
-        pass
-
-    def test_remove_database(self):
-        pass
-
     def test_parse(self):
         ontology_file_path_ttl = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
         ontology_file_path_rdf = os.path.abspath("PyBackTrip/tests/ontologies/food.rdf")
 
-        self.parseTestSkeleton(
+        self._parseTestSkeleton(
             input_format="turtle",
             input_type="source",
             ontology_file_path=ontology_file_path_ttl,
         )
-        self.parseTestSkeleton(
+        self._parseTestSkeleton(
             input_format="turtle",
             input_type="location",
             ontology_file_path=ontology_file_path_ttl,
         )
-        self.parseTestSkeleton(
+        self._parseTestSkeleton(
             input_format="turtle",
             input_type="data",
             ontology_file_path=ontology_file_path_ttl,
         )
 
-        self.parseTestSkeleton(
+        self._parseTestSkeleton(
             input_format="rdf",
             input_type="source",
             ontology_file_path=ontology_file_path_rdf,
         )
-        self.parseTestSkeleton(
+        self._parseTestSkeleton(
             input_format="rdf",
             input_type="location",
             ontology_file_path=ontology_file_path_rdf,
         )
-        self.parseTestSkeleton(
+        self._parseTestSkeleton(
             input_format="rdf",
             input_type="data",
             ontology_file_path=ontology_file_path_rdf,
         )
 
     def test_serialize(self):
-        pass
-        # ontology_file_path = str(
-        #     Path(
-        #         str(Path(__file__).parent.parent.resolve())
-        #         + os.path.sep.join(["", "ontologies", "food.ttl"])
-        #     )
-        # )
-        # self.__connection.begin()
-        # self.__connection.add(stardog.content.File(ontology_file_path))
-        # self.__connection.commit()
+        ontology_file_path = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
 
-        # db_content = self.__triplestore.serialize()
-        # with open(
-        #     str(
-        #         Path(
-        #             str(Path(__file__).parent.parent.resolve())
-        #             + os.path.sep.join(["", "ontologies", "expected_ontology.ttl"])
-        #         )
-        #     ),
-        #     "r",
-        # ) as out_file:
-        #     expected_serialization = out_file.read()
+        self.triplestore.parse(ontology_file_path)
+        db_content = self.triplestore.serialize()
 
-        # self.assertEqual(expected_serialization, db_content)
+        with open(
+            os.path.abspath("PyBackTrip/tests/ontologies/expected_ontology.ttl"),
+            "r",
+        ) as out_file:
+            expected_serialization = out_file.read()
+
+        self.assertEqual(expected_serialization, db_content)
 
     def test_add_triples(self):
         triple_1 = [
@@ -130,8 +107,8 @@ class Fuseki_TestCase(unittest.TestCase):
 
         self.triplestore.add_triples(triple_1 + triple_2 + triple_3)
 
-        query_result = self.select_all()
-        triples = self.parseQueryResult(query_result)
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
 
         self.assertEqual(len(triples), 3)
         self.assertCountEqual(triples, triple_1 + triple_2 + triple_3)
@@ -147,8 +124,8 @@ class Fuseki_TestCase(unittest.TestCase):
 
         self.triplestore.add_triples(triple_1)
 
-        query_result = self.select_all()
-        triples = self.parseQueryResult(query_result)  # type: ignore
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
         # converted_triples = self.normalizeTriples(triples)
 
         self.assertEqual(len(triples), 1)
@@ -184,13 +161,21 @@ class Fuseki_TestCase(unittest.TestCase):
                 (None, "<http://www.w3.org/2004/02/skos/core#prefLabel>", None)
             )
         )
-        converted_triples_set_1 = self.normalizeTriples(triples_set_1)
+        converted_triples_set_1 = self._normalizeTriples(triples_set_1)
 
         self.assertEqual(len(triples_set_1), 1)
         self.assertCountEqual(converted_triples_set_1, triple_3)
 
-        triples_set_2 = list(self.triplestore.triples(("<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>", None, "<http://www.w3.org/2002/07/owl#Class>")))  # type: ignore
-        converted_triples_set_2 = self.normalizeTriples(triples_set_2)
+        triples_set_2 = list(
+            self.triplestore.triples(
+                (
+                    "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                    None,
+                    "<http://www.w3.org/2002/07/owl#Class>",
+                )
+            )
+        )
+        converted_triples_set_2 = self._normalizeTriples(triples_set_2)
         self.assertEqual(len(triples_set_2), 1)
         self.assertCountEqual(converted_triples_set_2, triple_1)
 
@@ -221,15 +206,15 @@ class Fuseki_TestCase(unittest.TestCase):
         self.triplestore.add_triples(to_add)
 
         self.triplestore.remove(triple_2[0])
-        query_result = self.select_all()
-        triples = self.parseQueryResult(query_result)
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
 
         self.assertEqual(len(triples), 2)
         self.assertCountEqual(triples, triple_1 + triple_3)
 
         self.triplestore.remove(triple_3[0])
-        query_result = self.select_all()
-        triples = self.parseQueryResult(query_result)
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
 
         self.assertEqual(len(triples), 1)
         self.assertCountEqual(triples, triple_1)
@@ -261,19 +246,13 @@ class Fuseki_TestCase(unittest.TestCase):
         self.triplestore.add_triples(to_add)
 
         matching_triples_1 = self.triplestore.query(
-            """
-            SELECT ?s ?p ?o WHERE { ?s ?p ?o . }
-            """
+            f"SELECT ?s ?p ?o FROM <{GRAPH}> WHERE {{ ?s ?p ?o . }} "
         )
-        converted_triples_set_1 = self.normalizeTriples(matching_triples_1)
+        converted_triples_set_1 = self._normalizeTriples(matching_triples_1)
         matching_triples_2 = self.triplestore.query(
-            """
-            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-
-            SELECT ?s ?o WHERE { ?s rdf:type ?o . }
-            """
+            f"SELECT ?s ?o FROM <{GRAPH}> WHERE {{ ?s rdf:type ?o . }}"
         )
-        converted_triples_set_2 = self.normalizeTriples(matching_triples_2)
+        converted_triples_set_2 = self._normalizeTriples(matching_triples_2)
 
         self.assertEqual(len(converted_triples_set_1), 3)
         self.assertCountEqual(converted_triples_set_1, triple_1 + triple_2 + triple_3)
@@ -319,13 +298,13 @@ class Fuseki_TestCase(unittest.TestCase):
 
     ## Utils functions
 
-    def select_all(self):
+    def _selectAll(self):
         return requests.get(
             f"http://{TRIPLESTORE_HOST}:{TRIPLESTORE_PORT}/{DATABASE}",
             params={"query": f"SELECT ?s ?p ?o FROM <{GRAPH}> WHERE {{ ?s ?p ?o . }}"},
         ).json()
 
-    def parseTestSkeleton(
+    def _parseTestSkeleton(
         self, input_format, input_type, ontology_file_path, input_encoding="utf8"
     ):
         if input_type == "source":
@@ -339,7 +318,7 @@ class Fuseki_TestCase(unittest.TestCase):
             with open(ontology_file_path, "r", encoding=input_encoding) as file:
                 self.triplestore.parse(data=file.read(), format=input_format)
 
-        # db_content = self.__connection.export(stardog.content_types.TURTLE).decode()  # type: ignore
+        # db_content = self.__connection.export(stardog.content_types.TURTLE).decode()
 
         db_content = self.triplestore.serialize()
 
@@ -351,9 +330,9 @@ class Fuseki_TestCase(unittest.TestCase):
 
         self.assertEqual(expected_serialization, db_content)
 
-    def parseQueryResult(self, query_result: dict):
-        query_vars = query_result["head"]["vars"]  # type: ignore
-        query_bindings = query_result["results"]["bindings"]  # type: ignore
+    def _parseQueryResult(self, query_result: dict):
+        query_vars = query_result["head"]["vars"]
+        query_bindings = query_result["results"]["bindings"]
 
         triples_res = []
         for binding in query_bindings:
@@ -376,26 +355,26 @@ class Fuseki_TestCase(unittest.TestCase):
                         else f"_:{entry['value']}"
                     )
                 current_triple = current_triple + (new_value,)
-            triples_res.append(self.normalizeTriple(current_triple))
+            triples_res.append(self._normalizeTriple(current_triple))
 
         return triples_res
 
-    def normalizeTriple(self, triple):
+    def _normalizeTriple(self, triple):
         converted_triple = ()
         for value in triple:
-            converted_value = self.asuristr(value)
+            converted_value = self._asuristr(value)
             converted_triple = converted_triple + (converted_value,)
 
         return converted_triple
 
-    def normalizeTriples(self, triples):
+    def _normalizeTriples(self, triples):
         converted_triples = []
         for triple in triples:
-            converted_triples.append(self.normalizeTriple(triple))
+            converted_triples.append(self._normalizeTriple(triple))
 
         return converted_triples
 
-    def asuristr(self, value):
+    def _asuristr(self, value):
         if value is None:
             return None
         if isinstance(value, Literal):

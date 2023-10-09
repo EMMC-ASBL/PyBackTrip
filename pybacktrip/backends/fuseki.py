@@ -195,7 +195,7 @@ class FusekiStrategy:
             )
 
         headers = {"Content-type": f"{self.__CONTENT_TYPES[format]}"}
-        self.__request("POST", content, headers, True, True)
+        self.__request("POST", cmd=content, headers=headers, plainData=True, graph=True)
 
     def serialize(
         self, destination: Union[str, IO] = "", format: str = "turtle", **kwargs
@@ -214,7 +214,7 @@ class FusekiStrategy:
             Serialised string if `destination` is not defined.
         """
 
-        content = self.__request("GET", graph=True, json=False)["response"]
+        content = self.__request("GET", prefix=False, graph=True, json=False)["response"]
 
         if not destination:
             return content
@@ -284,6 +284,7 @@ class FusekiStrategy:
         self,
         method: L["GET", "POST"],
         cmd: Union[str, BufferedReader] = "",
+        prefix: bool = True,
         headers: dict = {},
         plainData: bool = False,
         graph: bool = False,
@@ -293,7 +294,8 @@ class FusekiStrategy:
 
         Args:
             method (Literal["GET", "POST"]): Method of the request.
-            cmd (str, optional): Command to be executed. Defaults to "".
+            cmd (Union[str, BufferedReader], optional): Command to be executed. Defaults to "".
+            prefix (bool, optional): If the prefixes need to be added to the query. Defaults to True.
             headers (dict, optional): Custom headers. Defaults to {}.
             plainData (bool, optional): If data needs a format or is plain. Defaults to False.
             graph (bool, optional): If the endpoint needs to specify the graph. Defaults to False.
@@ -313,7 +315,7 @@ class FusekiStrategy:
             else f"{self.__sparql_endpoint}?graph={self.__GRAPH}"
         )
 
-        if isinstance(cmd, str):
+        if prefix and isinstance(cmd, str):
             cmd = (
                 " ".join(f"PREFIX {k}: <{v}>" for k, v in self.__namespaces.items())
                 + cmd
