@@ -152,7 +152,7 @@ class Stardog_TestCase(unittest.TestCase):
             str(
                 Path(
                     str(Path(__file__).parent.parent.resolve())
-                    + os.path.sep.join(["", "ontologies", "expected_ontology.ttl"])
+                    + os.path.sep.join(["", "ontologies", "stardog_expected_ontology.ttl"])
                 )
             ),
             "r",
@@ -418,7 +418,7 @@ class Stardog_TestCase(unittest.TestCase):
             str(
                 Path(
                     str(Path(__file__).parent.parent.resolve())
-                    + os.path.sep.join(["", "ontologies", "expected_ontology.ttl"])
+                    + os.path.sep.join(["", "ontologies", "stardog_expected_ontology.ttl"])
                 )
             ),
             "r",

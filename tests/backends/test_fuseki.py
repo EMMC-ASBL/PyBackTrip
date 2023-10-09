@@ -41,16 +41,16 @@ class Fuseki_TestCase(unittest.TestCase):
             input_type="source",
             ontology_file_path=ontology_file_path_ttl,
         )
-        # self._parseTestSkeleton(
-        #     input_format="turtle",
-        #     input_type="location",
-        #     ontology_file_path=ontology_file_path_ttl,
-        # )
-        # self._parseTestSkeleton(
-        #     input_format="turtle",
-        #     input_type="data",
-        #     ontology_file_path=ontology_file_path_ttl,
-        # )
+        self._parseTestSkeleton(
+            input_format="turtle",
+            input_type="location",
+            ontology_file_path=ontology_file_path_ttl,
+        )
+        self._parseTestSkeleton(
+            input_format="turtle",
+            input_type="data",
+            ontology_file_path=ontology_file_path_ttl,
+        )
 
         # self._parseTestSkeleton(
         #     input_format="rdf",
@@ -75,7 +75,7 @@ class Fuseki_TestCase(unittest.TestCase):
         db_content = self.triplestore.serialize()
 
         with open(
-            os.path.abspath("PyBackTrip/tests/ontologies/expected_ontology.ttl"),
+            os.path.abspath("PyBackTrip/tests/ontologies/fuseki_expected_ontology.ttl"),
             "r",
         ) as out_file:
             expected_serialization = out_file.read()
@@ -319,17 +319,13 @@ class Fuseki_TestCase(unittest.TestCase):
                 self.triplestore.parse(data=file.read(), format=input_format)
 
         db_content = self.triplestore.serialize()
-        # db_content = self.triplestore.__request("GET", prefix=False, graph=True, json=False)[
-        #     "response"
-        # ]
-        # db_content = requests.get("http://localhost:3030/openmodel?graph=graph://main").text
 
         with open(
-            os.path.abspath(ontology_file_path),
+            os.path.abspath("PyBackTrip/tests/ontologies/fuseki_expected_ontology.ttl"),
             "r",
         ) as out_file:
             expected_serialization = out_file.read()
-        print(db_content)
+
         self.assertEqual(expected_serialization, db_content)
 
     def _parseQueryResult(self, query_result: dict):
