@@ -239,7 +239,10 @@ class FusekiStrategy:
             List of tuples of IRIs for each matching row.
         """
 
-        queryStr = str(query_object).strip()
+        iw = query_object.index("WHERE")
+        queryStr = (
+            f"{query_object[:iw]}FROM <{self.__GRAPH}> {query_object[iw:]}".strip()
+        )
 
         res = self.__request("GET", queryStr)
 
