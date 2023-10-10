@@ -52,21 +52,21 @@ class Fuseki_TestCase(unittest.TestCase):
             ontology_file_path=ontology_file_path_ttl,
         )
 
-        # self._parseTestSkeleton(
-        #     input_format="rdf",
-        #     input_type="source",
-        #     ontology_file_path=ontology_file_path_rdf,
-        # )
-        # self._parseTestSkeleton(
-        #     input_format="rdf",
-        #     input_type="location",
-        #     ontology_file_path=ontology_file_path_rdf,
-        # )
-        # self._parseTestSkeleton(
-        #     input_format="rdf",
-        #     input_type="data",
-        #     ontology_file_path=ontology_file_path_rdf,
-        # )
+        self._parseTestSkeleton(
+            input_format="rdf",
+            input_type="source",
+            ontology_file_path=ontology_file_path_rdf,
+        )
+        self._parseTestSkeleton(
+            input_format="rdf",
+            input_type="location",
+            ontology_file_path=ontology_file_path_rdf,
+        )
+        self._parseTestSkeleton(
+            input_format="rdf",
+            input_type="data",
+            ontology_file_path=ontology_file_path_rdf,
+        )
 
     def test_serialize(self):
         ontology_file_path = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
@@ -309,19 +309,21 @@ class Fuseki_TestCase(unittest.TestCase):
     ):
         if input_type == "source":
             self.triplestore.parse(
-                source=open(ontology_file_path, "r", encoding=input_encoding),
+                source=open(ontology_file_path, "rb"),
                 format=input_format,
             )
         elif input_type == "location":
             self.triplestore.parse(location=ontology_file_path, format=input_format)
         else:
-            with open(ontology_file_path, "r", encoding=input_encoding) as file:
+            with open(ontology_file_path, "rb") as file:
                 self.triplestore.parse(data=file.read(), format=input_format)
 
         db_content = self.triplestore.serialize()
 
         with open(
-            os.path.abspath("PyBackTrip/tests/ontologies/fuseki_expected_ontology.ttl"),
+            os.path.abspath(
+                f"PyBackTrip/tests/ontologies/fuseki_expected_ontology.{'rdf' if input_format == 'rdf' else 'ttl'}"
+            ),
             "r",
         ) as out_file:
             expected_serialization = out_file.read()
