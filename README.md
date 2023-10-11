@@ -7,6 +7,8 @@ PyBackTrip currently supports the following triplestore solutions:
 | Triplestore | Backend Name |
 | ----------- | ----------- |
 | Stardog | stardog |
+| ------- | --------|
+| Fuseki | fuseki |
 ---
 
 ## Installation
@@ -23,7 +25,7 @@ The package provides several backends implementations. After installing they are
 ```python
 from tripper import Triplestore
 
-ts = Triplestore(backend="stardog", ...)
+ts = Triplestore(backend="fuseki", ...)
 ```
 ---
 
@@ -34,9 +36,9 @@ Each backend may have its own configuration in the Triplestore class. This secti
 ```python
 from tripper import Triplestore
 
-ts = Triplestore(backend = "stardog", 
+ts = Triplestore(backend = "fuseki", 
                  base_iri = "http://example.com/myontology#", 
-                 triplestore_url = "http://localhost:5820", 
+                 triplestore_url = "http://localhost:3030", 
                  database = "database",
                  uname = "some_username"
                  pwd = "some_pwd"
