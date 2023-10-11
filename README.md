@@ -7,7 +7,6 @@ PyBackTrip currently supports the following triplestore solutions:
 | Triplestore | Backend Name |
 | ----------- | ----------- |
 | Stardog | stardog |
-| ------- | --------|
 | Fuseki | fuseki |
 ---
 
