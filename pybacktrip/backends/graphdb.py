@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from tripper.triplestore import Triple
 
 
+#  TODO: HANDLE BASE NAMESPACE
+
+
 class GraphDBStrategy():
 
     ## Class attributes
@@ -55,7 +58,8 @@ class GraphDBStrategy():
                 print("Database {} exists".format(database))
                 self.__database = database
                 self.__triplestore_url = triplestore_url
-                self.__sparql_endpoint = SPARQLWrapper(endpoint="{}/repositories/{}".format(triplestore_url, database), **kwargs)
+                self.__sparql_endpoint_query = SPARQLWrapper(endpoint="{}/repositories/{}".format(triplestore_url, database), **kwargs)
+                self.__sparql_endpoint_update = SPARQLWrapper(endpoint="{}/repositories/{}/statements".format(triplestore_url, database), **kwargs)
             else:
                 print(response.status_code)
                 print(response.text)
@@ -205,10 +209,10 @@ class GraphDBStrategy():
                 "}",
             ]
         )
-        self.__sparql_endpoint.setReturnFormat(JSON)
-        self.__sparql_endpoint.setMethod(GET)
-        self.__sparql_endpoint.setQuery(query)
-        ret = self.__sparql_endpoint.queryAndConvert()
+        self.__sparql_endpoint_query.setReturnFormat(JSON)
+        self.__sparql_endpoint_query.setMethod(GET)
+        self.__sparql_endpoint_query.setQuery(query)
+        ret = self.__sparql_endpoint_query.queryAndConvert()
         for binding in ret["results"]["bindings"]:  # type: ignore              
             yield tuple(
                 self.__convert_json_entrydict(binding[name]) if name in binding else value  # type: ignore
@@ -216,6 +220,66 @@ class GraphDBStrategy():
             )
 
 
+    def add_triples(self, triples: "Sequence[Triple]") -> "QueryResult":
+        spec = "\n".join(
+            "  "
+            + " ".join(
+                value.n3()
+                if isinstance(value, Literal)
+                else value
+                if value.startswith("<") or value.startswith("\"")
+                # else "<{}{}>".format(self.__getBaseNamespace(), value[1:])
+                # if value.startswith(":")
+                else f"<{value}>"
+                for value in triple
+            )
+            + " ."
+            for triple in triples
+        )
+        query = f"INSERT DATA {{\n{spec}\n}}"
+        self.__sparql_endpoint_update.setReturnFormat(RDFXML)
+        self.__sparql_endpoint_update.setMethod(POST)
+        self.__sparql_endpoint_update.setQuery(query)
+        return self.__sparql_endpoint_update.query()
+
+    def remove(self, triple: "Triple") -> "QueryResult":
+
+        spec = " ".join(
+            f"?{name}"
+            if value is None
+            else value.n3()
+            if isinstance(value, Literal)
+            else value
+            if value.startswith("<") or value.startswith("\"")
+            # else "<{}{}>".format(self.__getBaseNamespace(), value[1:])
+            #     if value.startswith(":")
+            else f"<{value}>"
+            for name, value in zip("spo", triple)
+        )
+        query = f"DELETE WHERE {{ {spec} }}"
+        self.__sparql_endpoint_update.setReturnFormat(RDFXML)
+        self.__sparql_endpoint_update.setMethod(POST)
+        self.__sparql_endpoint_update.setQuery(query)
+        return self.__sparql_endpoint_update.query()
+    
+
+    def query(self, query_object, **kwargs):
+
+        self.__sparql_endpoint_query.setReturnFormat(JSON)
+        self.__sparql_endpoint_query.setMethod(GET)
+        self.__sparql_endpoint_query.setQuery(query_object)
+        query_result = self.__sparql_endpoint_query.queryAndConvert()
+        query_vars = query_result["head"]["vars"]    # type: ignore
+        query_bindings = query_result["results"]["bindings"]     # type: ignore
+
+        triples_res = []
+        for binding in query_bindings:
+            current_triple = ()
+            for var in query_vars:
+                current_triple = current_triple + (self.__convert_json_entrydict(binding[var]),) # type: ignore
+            triples_res.append(current_triple)
+
+        return triples_res
 
 
     ### Utils methods
@@ -280,6 +344,7 @@ class GraphDBStrategy():
 
         raise ValueError(f"unexpected type in entrydict: {entrydict}")
     
+    
 
 ## TEST ##
 
@@ -301,4 +366,24 @@ matching_triples = graphdb.triples(triple = ("<http://ontotrans.eu/meta/1.0/meta
 print(list(matching_triples))  
 
 
+GraphDBStrategy.remove_database("http://localhost:7200", "test-insertion")
+print(GraphDBStrategy.list_databases("http://localhost:7200"))
+GraphDBStrategy.create_database("http://localhost:7200", "test-insertion")
+print(GraphDBStrategy.list_databases("http://localhost:7200"))
+
+graphdb_2 = GraphDBStrategy(triplestore_url = "http://localhost:7200", database = "test-insertion", base_iri = "")
+
+print("ADD")
+graphdb_2.add_triples(triples = [("http://example.it/philosophers#Socrate", "http://example.it/philosophers#is", "http://example.it/philosophers#mortale")]) #type: ignore
+matching_triples = graphdb_2.triples(triple = ("http://example.it/philosophers#Socrate", None, None)) #type: ignore
+print(list(matching_triples))
+
+print("REMOVE")
+graphdb_2.remove(triple = ("http://example.it/philosophers#Socrate", None, None)) #type: ignore
+matching_triples = graphdb_2.triples(triple = ("http://example.it/philosophers#Socrate", None, None)) #type: ignore
+print(list(matching_triples))
+
+print("QUERY")
+query_res = graphdb.query("SELECT ?p ?o WHERE {<http://ontotrans.eu/meta/1.0/metadata#oip-benzene> ?p ?o}") #type: ignore
+print(query_res)
 
