@@ -28,7 +28,8 @@ class Fuseki_TestCase(unittest.TestCase):
         self.__existing_namespaces = self.triplestore.namespaces().copy()
 
     def tearDown(self):
-        self.triplestore.delete_graph()
+        FusekiStrategy.remove_database()
+        pass
 
     ## Unit test
 

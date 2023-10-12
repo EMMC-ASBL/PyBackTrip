@@ -149,9 +149,6 @@ class FusekiStrategy:
 
         return self.__request("POST", cmd)
 
-    def delete_graph(self):
-        requests.delete(f"http://localhost:3030/openmodel?graph={self.__GRAPH}")
-
     # ADDITIONAL METHODS
 
     def parse(
@@ -260,15 +257,6 @@ class FusekiStrategy:
 
         return triplesRes
 
-    def namespaces(self) -> dict:
-        """Get the SPARQL namespaces
-
-        Returns:
-            dict: The SPARQL namespaces as dict
-        """
-
-        return self.__namespaces
-
     def bind(self, prefix: str, namespace: Union[str, None]):
         """Bind, update, or remove a SPARQL namespace
 
@@ -282,6 +270,50 @@ class FusekiStrategy:
         else:
             if prefix in self.__namespaces:
                 del self.__namespaces[prefix]
+
+    def namespaces(self) -> dict:
+        """Get the SPARQL namespaces
+
+        Returns:
+            dict: The SPARQL namespaces as dict
+        """
+
+        return self.__namespaces
+
+    @classmethod
+    def create_database(cls, database: str, **kwargs):
+        """Create a new database in backend.
+
+        Args:
+            database (str): Name of the new database.
+            kwargs: Keyword arguments passed to the backend create_database() method.
+        """
+
+        pass
+
+    @classmethod
+    def remove_database(cls, database: str = "", **kwargs):
+        """Remove a database in backend.
+
+        Args:
+            database (str): Name of the database to be removed.
+            kwargs: Keyword arguments passed to the backend remove_database() method.
+        """
+
+        requests.delete(
+            f"http://localhost:3030/openmodel?graph={database if database else cls.__GRAPH}"
+        )
+
+    @classmethod
+    def list_databases(cls, **kwargs) -> str:
+        """For backends that supports multiple databases, list of all
+        databases.
+
+        Args:
+            kwargs: Keyword arguments passed to the backend list_database() method.
+        """
+
+        return cls.__GRAPH
 
     # PRIVATE METHODS
 
