@@ -60,8 +60,8 @@ class GraphdbStrategy():
                 print("Database {} exists".format(database))
                 self.__database = database
                 self.__triplestore_url = triplestore_url
-                self.__sparql_endpoint_query = SPARQLWrapper(endpoint="{}/repositories/{}".format(triplestore_url, database), **kwargs)
-                self.__sparql_endpoint_update = SPARQLWrapper(endpoint="{}/repositories/{}/statements".format(triplestore_url, database), **kwargs)
+                self.__sparql_endpoint_query = SPARQLWrapper(endpoint="{}/repositories/{}".format(triplestore_url, database))
+                self.__sparql_endpoint_update = SPARQLWrapper(endpoint="{}/repositories/{}/statements".format(triplestore_url, database))
             else:
                 print(response.status_code)
                 print(response.text)
