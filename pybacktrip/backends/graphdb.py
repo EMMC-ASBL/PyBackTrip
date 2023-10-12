@@ -1,6 +1,8 @@
 
 import requests
 import io
+import csv
+from io import StringIO
 from tripper import Literal as TripperLiteral
 from typing import TYPE_CHECKING
 from SPARQLWrapper import GET, JSON, POST, RDFXML, SPARQLWrapper
@@ -14,7 +16,8 @@ if TYPE_CHECKING:
     from tripper.triplestore import Triple
 
 
-#  TODO: HANDLE BASE NAMESPACE
+# TODO: HANDLE BASE NAMESPACE
+# COMMENT: curl -X GET http://127.0.0.1:7200/repositories/test/namespaces
 
 
 class GraphDBStrategy():
@@ -280,6 +283,56 @@ class GraphDBStrategy():
             triples_res.append(current_triple)
 
         return triples_res
+    
+    def serialize(self, destination=None, format='turtle', **kwargs):
+        # COMMENT: Check if serialization is supported
+        raise NotImplementedError("GraphDB backend does not support serialization")
+    
+
+    def namespaces(self) -> dict:
+        namespaces = {}
+
+        response = requests.get('{}/repositories/{}/namespaces'.format(self.__triplestore_url, self.__database))
+        if response.status_code == 200:
+            string_csv = StringIO(response.text)
+            reader = csv.reader(string_csv, delimiter=',')
+            for row in reader:
+                namespaces[row[0]] = row[1]
+        else:
+            print(response.status_code)
+            print(response.text)
+            print("Namespaces not retrieved from database {}".format(self.__database))
+
+        return namespaces
+
+    def bind(self, prefix: str, namespace: str):
+        headers_put = {
+            'Content-Type': 'text/plain',
+            'Accept': 'application/json',
+        }
+        headers_delete = {
+           'Accept': 'application/json',
+        }
+        
+        try:
+            if namespace is None:
+                response = requests.delete('{}/repositories/{}/namespaces/{}'.format(self.__triplestore_url, self.__database, prefix), headers=headers_delete)
+                if response.status_code == 204:
+                    print("Namespace {} deleted from database {}".format(prefix, self.__database))
+                else:
+                    print(response.status_code)
+                    print(response.text)
+                    print("Namespace {} not deleted from database {}".format(prefix, self.__database))
+            else:
+                response = requests.put('{}/repositories/{}/namespaces/{}'.format(self.__triplestore_url, self.__database, prefix), headers=headers_put, data=namespace)
+                if response.status_code == 204:
+                    print("Namespace {} added to database {}".format(prefix, self.__database))
+                else:
+                    print(response.status_code)
+                    print(response.text)
+                    print("Namespace {} not added to database {}".format(prefix, self.__database))
+        except Exception as err:
+            print(err)
 
 
     ### Utils methods
@@ -386,4 +439,13 @@ print(list(matching_triples))
 print("QUERY")
 query_res = graphdb.query("SELECT ?p ?o WHERE {<http://ontotrans.eu/meta/1.0/metadata#oip-benzene> ?p ?o}") #type: ignore
 print(query_res)
+
+
+print(graphdb.namespaces())
+graphdb.bind("first", "http://first.com")
+print(graphdb.namespaces())
+graphdb.bind("first", None) #type: ignore
+print(graphdb.namespaces())
+
+
 
