@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 # TODO: HANDLE BASE NAMESPACE
 
 
-class GraphDBStrategy():
+class GraphdbStrategy():
 
     ## Class attributes
     __database: str = None  #type: ignore
@@ -114,7 +114,7 @@ class GraphDBStrategy():
             # if response.status_code == 200:
             #     print("GraphDB reachable")
 
-            response = requests.post('http://127.0.0.1:7200/rest/repositories', headers=headers_post, files={'config': GraphDBStrategy.__create_configuration_ttl(database)})
+            response = requests.post('http://127.0.0.1:7200/rest/repositories', headers=headers_post, files={'config': GraphdbStrategy.__create_configuration_ttl(database)})
             if response.status_code == 201 or response.status_code == 400:
                 print("Database {} created".format(database))
             else:
@@ -394,62 +394,6 @@ class GraphDBStrategy():
             )
 
         raise ValueError(f"unexpected type in entrydict: {entrydict}")
-    
-    
-
-# ## TEST ##
-
-# print(GraphDBStrategy.list_databases("http://localhost:7200"))
-# GraphDBStrategy.remove_database("http://localhost:7200", "test")
-# print(GraphDBStrategy.list_databases("http://localhost:7200"))
-# GraphDBStrategy.create_database("http://localhost:7200", "test")
-# print(GraphDBStrategy.list_databases("http://localhost:7200"))
-
-# graphdb = GraphDBStrategy(triplestore_url = "http://localhost:7200", database = "test", base_iri = "")
-# graphdb.parse(source = r"C:\Users\alexc\Desktop\Universita\Ricerca\OntoTrans\oip-workshop\ontology\solvents.ttl", format = "turtle")
-# graphdb.parse(source = r"C:\Users\alexc\Desktop\Universita\Ricerca\OntoTrans\oip-workshop\ontology\solvents-individuals.ttl", format = "turtle")
-# graphdb.parse(source = r"C:\Users\alexc\Desktop\Universita\Ricerca\OntoTrans\oip-workshop\entities\isobaric_liquids_nist.ttl", format = "turtle")
-# graphdb.parse(source = r"C:\Users\alexc\Desktop\Universita\Ricerca\OntoTrans\oip-workshop\entities\isobaric_liquids_nist.ttl", format = "turtle")
-# graphdb.parse(source = r"C:\Users\alexc\Desktop\Universita\Ricerca\OntoTrans\oip-workshop\entities\md_aa.ttl", format = "turtle")
-# graphdb.parse(source = r"C:\Users\alexc\Desktop\Universita\Ricerca\OntoTrans\oip-workshop\entities\md_cg.ttl", format = "turtle")
-
-# matching_triples = graphdb.triples(triple = ("<http://ontotrans.eu/meta/1.0/metadata#oip-benzene>", None, None)) #type: ignore
-# print(list(matching_triples))  
-
-
-# GraphDBStrategy.remove_database("http://localhost:7200", "test-insertion")
-# print(GraphDBStrategy.list_databases("http://localhost:7200"))
-# GraphDBStrategy.create_database("http://localhost:7200", "test-insertion")
-# print(GraphDBStrategy.list_databases("http://localhost:7200"))
-
-# graphdb_2 = GraphDBStrategy(triplestore_url = "http://localhost:7200", database = "test-insertion", base_iri = "")
-
-# print("ADD")
-# graphdb_2.add_triples(triples = [("http://example.it/philosophers#Socrate", "http://example.it/philosophers#is", "http://example.it/philosophers#mortale")]) #type: ignore
-# matching_triples = graphdb_2.triples(triple = ("http://example.it/philosophers#Socrate", None, None)) #type: ignore
-# print(list(matching_triples))
-
-# print("REMOVE")
-# graphdb_2.remove(triple = ("http://example.it/philosophers#Socrate", None, None)) #type: ignore
-# matching_triples = graphdb_2.triples(triple = ("http://example.it/philosophers#Socrate", None, None)) #type: ignore
-# print(list(matching_triples))
-
-# print("QUERY")
-# query_res = graphdb.query("SELECT ?p ?o WHERE {<http://ontotrans.eu/meta/1.0/metadata#oip-benzene> ?p ?o}") #type: ignore
-# print(query_res)
-
-
-# print(graphdb.namespaces())
-# graphdb.bind("first", "http://first.com")
-# print(graphdb.namespaces())
-# graphdb.bind("first", None) #type: ignore
-# print(graphdb.namespaces())
-
-
-# GraphDBStrategy.remove_database("http://localhost:7200", "namespaces-test")
-# print(GraphDBStrategy.list_databases("http://localhost:7200"))
-# GraphDBStrategy.create_database("http://localhost:7200", "namespaces-test")
-# print(GraphDBStrategy.list_databases("http://localhost:7200"))
 
 
 

@@ -5,7 +5,7 @@ import requests
 import os
 from pathlib import Path
 from tripper.literal import Literal as TripperLiteral
-from pybacktrip.backends.graphdb import GraphDBStrategy
+from pybacktrip.backends.graphdb import GraphdbStrategy
 from rdflib import Graph, Namespace, URIRef, Literal, BNode
 from SPARQLWrapper import GET, JSON, POST, RDFXML, SPARQLWrapper
 
@@ -46,7 +46,7 @@ class GraphDB_TestCase(unittest.TestCase):
             for row in reader:
                 self.__existing_namespaces.append({"prefix": row[0], "name": row[1]})
 
-        self.__triplestore: GraphDBStrategy = GraphDBStrategy(base_iri="http://example.com/ontology#", triplestore_url = self.__endpoint, database=self.__database_name)
+        self.__triplestore: GraphdbStrategy = GraphdbStrategy(base_iri="http://example.com/ontology#", triplestore_url = self.__endpoint, database=self.__database_name)
         self.__sparql_endpoint_query = SPARQLWrapper(endpoint="{}/repositories/{}".format(self.__endpoint, self.__database_name))
 
     @classmethod
@@ -79,14 +79,14 @@ class GraphDB_TestCase(unittest.TestCase):
     ## Unit test
 
     def test_list_databases(self):
-        databases = GraphDBStrategy.list_databases(self.__endpoint)
+        databases = GraphdbStrategy.list_databases(self.__endpoint)
         self.assertEqual(len(databases), len(self.__existing_databases) + 1)
         self.assertCountEqual(databases, self.__existing_databases + [self.__database_name])
 
 
     def test_create_database(self):
         new_database_name = "graphdb_test_creation"
-        creation_response = GraphDBStrategy.create_database(self.__endpoint, new_database_name)
+        creation_response = GraphdbStrategy.create_database(self.__endpoint, new_database_name)
         new_databases = []
         response = requests.get('{}/rest/repositories'.format(self.__endpoint), headers={'Accept': 'application/json'})
         if response.status_code == 200:
@@ -98,7 +98,7 @@ class GraphDB_TestCase(unittest.TestCase):
 
 
     def test_remove_database(self):
-        deletion_response = GraphDBStrategy.remove_database(self.__endpoint, self.__database_name)
+        deletion_response = GraphdbStrategy.remove_database(self.__endpoint, self.__database_name)
         new_databases = []
         response = requests.get('{}/rest/repositories'.format(self.__endpoint), headers={'Accept': 'application/json'})
         if response.status_code == 200:

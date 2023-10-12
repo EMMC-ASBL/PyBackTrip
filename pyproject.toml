@@ -18,7 +18,8 @@ classifiers = [
 dependencies = [
   "tripper>=0.2.4",
   "SPARQLWrapper>=2.0.0",
-  "pystardog>=0.14.0"
+  "pystardog>=0.14.0",
+  "rdflib>=6.3.2",
 ]
 
 [project.urls]
