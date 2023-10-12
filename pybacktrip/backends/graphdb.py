@@ -114,7 +114,7 @@ class GraphdbStrategy():
             # if response.status_code == 200:
             #     print("GraphDB reachable")
 
-            response = requests.post('http://127.0.0.1:7200/rest/repositories', headers=headers_post, files={'config': GraphdbStrategy.__create_configuration_ttl(database)})
+            response = requests.post('{}/rest/repositories'.format(triplestore_url), headers=headers_post, files={'config': GraphdbStrategy.__create_configuration_ttl(database)})
             if response.status_code == 201 or response.status_code == 400:
                 print("Database {} created".format(database))
             else:
