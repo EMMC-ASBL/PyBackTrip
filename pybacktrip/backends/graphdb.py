@@ -153,9 +153,6 @@ class GraphdbStrategy():
 
     def parse(self, source=None, location=None, data=None, format="turtle", **kwargs):
 
-        if data is not None:
-            raise Exception("GraphDB backend does not support parsing data")
-
         if format not in self.__parsing_format_supported:
             raise Exception("Format not supported")
 
@@ -170,8 +167,10 @@ class GraphdbStrategy():
         elif (source is not None and isinstance(source, str)) or (location is not None):
             content = open(source if source is not None else location, "r").read() #type: ignore
 
+        elif data is not None:
+            content = data
         else:
-            raise Exception("Error during argument checking\nOnly one among source, location must be provided\n")
+            raise Exception("Error during argument checking\nOnly one among source, location and data must be provided\n")
         
 
         try:
@@ -394,6 +393,3 @@ class GraphdbStrategy():
             )
 
         raise ValueError(f"unexpected type in entrydict: {entrydict}")
-
-
-
