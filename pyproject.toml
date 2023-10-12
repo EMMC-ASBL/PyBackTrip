@@ -26,3 +26,4 @@ repository = "https://github.com/xAlessandroC/PyBackTrip"
 
 [project.entry-points."tripper.backends"]
 stardog = "pybacktrip.backends.stardog"
+graphdb = "pybacktrip.backends.graphdb"
