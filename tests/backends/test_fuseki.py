@@ -32,6 +32,147 @@ class Fuseki_TestCase(unittest.TestCase):
         pass
 
     ## Unit test
+    
+    ## DEFAULT METHODS
+    
+    def test_triples(self):
+        triple_1 = [
+            (
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+                "<http://www.w3.org/2002/07/owl#Class>",
+            )
+        ]
+        triple_2 = [
+            (
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                "<http://www.w3.org/2000/01/rdf-schema#subClassOf>",
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_d2741ae5_f200_4873_8f72_ac315917c41b>",
+            )
+        ]
+        triple_3 = [
+            (
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                "<http://www.w3.org/2004/02/skos/core#prefLabel>",
+                '"Carrot"@en',
+            )
+        ]
+        to_add = triple_1 + triple_2 + triple_3
+
+        self.triplestore.add_triples(to_add)
+
+        triples_set_1 = list(
+            self.triplestore.triples(
+                (None, "<http://www.w3.org/2004/02/skos/core#prefLabel>", None)
+            )
+        )
+        converted_triples_set_1 = self._normalizeTriples(triples_set_1)
+
+        self.assertEqual(len(triples_set_1), 1)
+        self.assertCountEqual(converted_triples_set_1, triple_3)
+
+        triples_set_2 = list(
+            self.triplestore.triples(
+                (
+                    "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                    None,
+                    "<http://www.w3.org/2002/07/owl#Class>",
+                )
+            )
+        )
+        converted_triples_set_2 = self._normalizeTriples(triples_set_2)
+        self.assertEqual(len(triples_set_2), 1)
+        self.assertCountEqual(converted_triples_set_2, triple_1)
+        
+    def test_add_triples(self):
+        triple_1 = [
+            (
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+                "<http://www.w3.org/2002/07/owl#Class>",
+            )
+        ]
+        triple_2 = [
+            (
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                "<http://www.w3.org/2000/01/rdf-schema#subClassOf>",
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_d2741ae5_f200_4873_8f72_ac315917c41b>",
+            )
+        ]
+        triple_3 = [
+            (
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                "<http://www.w3.org/2004/02/skos/core#prefLabel>",
+                '"Carrot"@en',
+            )
+        ]
+
+        self.triplestore.add_triples(triple_1 + triple_2 + triple_3)
+
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
+
+        self.assertEqual(len(triples), 3)
+        self.assertCountEqual(triples, triple_1 + triple_2 + triple_3)
+
+    def test_add_triples_differentformat(self):
+        triple_1 = [
+            (
+                ":FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb",
+                "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+                "<http://www.w3.org/2002/07/owl#Class>",
+            )
+        ]
+
+        self.triplestore.add_triples(triple_1)
+
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
+        # converted_triples = self.normalizeTriples(triples)
+
+        self.assertEqual(len(triples), 1)
+
+    def test_remove(self):
+        triple_1 = [
+            (
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+                "<http://www.w3.org/2002/07/owl#Class>",
+            )
+        ]
+        triple_2 = [
+            (
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                "<http://www.w3.org/2000/01/rdf-schema#subClassOf>",
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_d2741ae5_f200_4873_8f72_ac315917c41b>",
+            )
+        ]
+        triple_3 = [
+            (
+                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
+                "<http://www.w3.org/2004/02/skos/core#prefLabel>",
+                '"Carrot"@en',
+            )
+        ]
+        to_add = triple_1 + triple_2 + triple_3
+
+        self.triplestore.add_triples(to_add)
+
+        self.triplestore.remove(triple_2[0])
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
+
+        self.assertEqual(len(triples), 2)
+        self.assertCountEqual(triples, triple_1 + triple_3)
+
+        self.triplestore.remove(triple_3[0])
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
+
+        self.assertEqual(len(triples), 1)
+        self.assertCountEqual(triples, triple_1)
+
+    ## ADDITIONAL METHODS
 
     def test_parse(self):
         ontology_file_path_ttl = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
@@ -83,143 +224,6 @@ class Fuseki_TestCase(unittest.TestCase):
 
         self.assertEqual(expected_serialization, db_content)
 
-    def test_add_triples(self):
-        triple_1 = [
-            (
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
-                "<http://www.w3.org/2002/07/owl#Class>",
-            )
-        ]
-        triple_2 = [
-            (
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                "<http://www.w3.org/2000/01/rdf-schema#subClassOf>",
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_d2741ae5_f200_4873_8f72_ac315917c41b>",
-            )
-        ]
-        triple_3 = [
-            (
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                "<http://www.w3.org/2004/02/skos/core#prefLabel>",
-                '"Carrot"@en',
-            )
-        ]
-
-        self.triplestore.add_triples(triple_1 + triple_2 + triple_3)
-
-        query_result = self._selectAll()
-        triples = self._parseQueryResult(query_result)
-
-        self.assertEqual(len(triples), 3)
-        self.assertCountEqual(triples, triple_1 + triple_2 + triple_3)
-
-    def test_add_triples_differentformat(self):
-        triple_1 = [
-            (
-                ":FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb",
-                "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
-                "<http://www.w3.org/2002/07/owl#Class>",
-            )
-        ]
-
-        self.triplestore.add_triples(triple_1)
-
-        query_result = self._selectAll()
-        triples = self._parseQueryResult(query_result)
-        # converted_triples = self.normalizeTriples(triples)
-
-        self.assertEqual(len(triples), 1)
-
-    def test_triples(self):
-        triple_1 = [
-            (
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
-                "<http://www.w3.org/2002/07/owl#Class>",
-            )
-        ]
-        triple_2 = [
-            (
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                "<http://www.w3.org/2000/01/rdf-schema#subClassOf>",
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_d2741ae5_f200_4873_8f72_ac315917c41b>",
-            )
-        ]
-        triple_3 = [
-            (
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                "<http://www.w3.org/2004/02/skos/core#prefLabel>",
-                '"Carrot"@en',
-            )
-        ]
-        to_add = triple_1 + triple_2 + triple_3
-
-        self.triplestore.add_triples(to_add)
-
-        triples_set_1 = list(
-            self.triplestore.triples(
-                (None, "<http://www.w3.org/2004/02/skos/core#prefLabel>", None)
-            )
-        )
-        converted_triples_set_1 = self._normalizeTriples(triples_set_1)
-
-        self.assertEqual(len(triples_set_1), 1)
-        self.assertCountEqual(converted_triples_set_1, triple_3)
-
-        triples_set_2 = list(
-            self.triplestore.triples(
-                (
-                    "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                    None,
-                    "<http://www.w3.org/2002/07/owl#Class>",
-                )
-            )
-        )
-        converted_triples_set_2 = self._normalizeTriples(triples_set_2)
-        self.assertEqual(len(triples_set_2), 1)
-        self.assertCountEqual(converted_triples_set_2, triple_1)
-
-    def test_remove(self):
-        triple_1 = [
-            (
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
-                "<http://www.w3.org/2002/07/owl#Class>",
-            )
-        ]
-        triple_2 = [
-            (
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                "<http://www.w3.org/2000/01/rdf-schema#subClassOf>",
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_d2741ae5_f200_4873_8f72_ac315917c41b>",
-            )
-        ]
-        triple_3 = [
-            (
-                "<http://onto-ns.com/ontologies/examples/food#FOOD_e9cb271c_3be0_44e4_960f_6f6676445dbb>",
-                "<http://www.w3.org/2004/02/skos/core#prefLabel>",
-                '"Carrot"@en',
-            )
-        ]
-        to_add = triple_1 + triple_2 + triple_3
-
-        self.triplestore.add_triples(to_add)
-
-        self.triplestore.remove(triple_2[0])
-        query_result = self._selectAll()
-        triples = self._parseQueryResult(query_result)
-
-        self.assertEqual(len(triples), 2)
-        self.assertCountEqual(triples, triple_1 + triple_3)
-
-        self.triplestore.remove(triple_3[0])
-        query_result = self._selectAll()
-        triples = self._parseQueryResult(query_result)
-
-        self.assertEqual(len(triples), 1)
-        self.assertCountEqual(triples, triple_1)
-
     def test_query(self):
         triple_1 = [
             (
@@ -262,17 +266,6 @@ class Fuseki_TestCase(unittest.TestCase):
             converted_triples_set_2, [(triple_1[0][0], triple_1[0][2])]
         )
 
-    def test_namespaces(self):
-        namespaces = self.triplestore.namespaces()
-
-        self.assertEqual(len(namespaces.keys()), len(self.__existing_namespaces))
-        for k, v in self.__existing_namespaces.items():
-            prefix = k
-            uri = v
-
-            self.assertTrue(prefix in namespaces)
-            self.assertEqual(uri, namespaces[prefix])
-
     def test_bind(self):
         self.triplestore.bind("food", "http://onto-ns.com/ontologies/examples/food#")
         current_namespaces = self.triplestore.namespaces()
@@ -296,6 +289,17 @@ class Fuseki_TestCase(unittest.TestCase):
                 not_found = False
                 break
         self.assertTrue(not_found)
+
+    def test_namespaces(self):
+        namespaces = self.triplestore.namespaces()
+
+        self.assertEqual(len(namespaces.keys()), len(self.__existing_namespaces))
+        for k, v in self.__existing_namespaces.items():
+            prefix = k
+            uri = v
+
+            self.assertTrue(prefix in namespaces)
+            self.assertEqual(uri, namespaces[prefix])
 
     ## Utils functions
 
