@@ -28,13 +28,15 @@ class Fuseki_TestCase(unittest.TestCase):
         self.__existing_namespaces = self.triplestore.namespaces().copy()
 
     def tearDown(self):
-        FusekiStrategy.remove_database()
-        pass
+        FusekiStrategy.remove_database(
+            triplestore_url=f"http://{TRIPLESTORE_HOST}:{TRIPLESTORE_PORT}",
+            database=DATABASE,
+        )
 
     ## Unit test
-    
+
     ## DEFAULT METHODS
-    
+
     def test_triples(self):
         triple_1 = [
             (
@@ -83,7 +85,7 @@ class Fuseki_TestCase(unittest.TestCase):
         converted_triples_set_2 = self._normalizeTriples(triples_set_2)
         self.assertEqual(len(triples_set_2), 1)
         self.assertCountEqual(converted_triples_set_2, triple_1)
-        
+
     def test_add_triples(self):
         triple_1 = [
             (

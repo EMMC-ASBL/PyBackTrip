@@ -292,16 +292,17 @@ class FusekiStrategy:
         pass
 
     @classmethod
-    def remove_database(cls, database: str = "", **kwargs):
+    def remove_database(cls, triplestore_url: str, database: str, **kwargs):
         """Remove a database in backend.
 
         Args:
+            triplestore_url (str): Endpoint of the triplestore.
             database (str): Name of the database to be removed.
             kwargs: Keyword arguments passed to the backend remove_database() method.
         """
 
         requests.delete(
-            f"http://localhost:3030/openmodel?graph={database if database else cls.__GRAPH}"
+            f"{triplestore_url}/{database}?graph={cls.__GRAPH}"
         )
 
     @classmethod
