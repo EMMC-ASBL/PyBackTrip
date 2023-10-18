@@ -301,9 +301,7 @@ class FusekiStrategy:
             kwargs: Keyword arguments passed to the backend remove_database() method.
         """
 
-        requests.delete(
-            f"{triplestore_url}/{database}?graph={cls.__GRAPH}"
-        )
+        requests.delete(f"{triplestore_url}/{database}?graph={cls.__GRAPH}")
 
     @classmethod
     def list_databases(cls, **kwargs) -> str:
