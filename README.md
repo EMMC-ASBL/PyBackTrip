@@ -56,16 +56,12 @@ from tripper import Triplestore
 ts = Triplestore(backend = "fuseki", 
                  base_iri = "http://example.com/myontology#", 
                  triplestore_url = "http://localhost:3030", 
-                 database = "database",
-                 uname = "some_username"
-                 pwd = "some_pwd"
+                 database = "database"
 )
 ```
 * **base_iri**: the base IRI to start with (if it is not defined)
 * **triplestore_url**: the Fuseki service endpoint
 * **database**: the name of the database to use
-* **uname (optional)**: the username to log in
-* **pwd (optional)**: the password to log in
 
 
 
