@@ -103,6 +103,8 @@ class FusekiStrategy:
         Returns:
             dict: The result of the operation
         """
+        print('in add triples')
+        #print(self.__namespaces)
 
         spec = " ".join(
             " ".join(
@@ -111,6 +113,8 @@ class FusekiStrategy:
                 else value
                 if value.startswith("<") or value.startswith('"')
                 else "<{}{}>".format(self.__namespaces[""], value[1:])
+                if "" in self.__namespaces and value.startswith(":")
+                else str(value)
                 if value.startswith(":")
                 else f"<{value}>"
                 for value in triple
@@ -118,15 +122,21 @@ class FusekiStrategy:
             + " ."
             for triple in triples
         )
-        #http://localhost:3030/openmodel
+        print('aaaa')
+        i=0
+        for triple in triples:
+            print('---')
+            for value in triple:
+                print(repr(value))
+            i+=1
+            if i > 2:
+                break
+        print('bbbb')
 
         cmd = f"INSERT DATA {{ GRAPH <{self.__GRAPH}> {{ {spec} }} }}"
-        print(cmd)
-        cmd = f"INSERT DATA {{ GRAPH <http://localhost:3030/openmodel> {{ {spec} }} }}"
-        print('---------------')
-        print(cmd)
-        print('******************')
-        return self.__request("POST", cmd)
+        headers = {'Content-Type': 'application/sparql-update'}
+        print('cmd', cmd)
+        return self.__request("POST", cmd, headers=headers, plainData=True, graph=True)
 
     def remove(self, triple: "Triple") -> object:
         """Remove all matching triples from the backend.
@@ -199,8 +209,6 @@ class FusekiStrategy:
             )
 
         headers = {"Content-type": f"{self.__CONTENT_TYPES[format]}"}
-        print('parse cmd', content)
-        print('parse headers', headers)
         self.__request("POST", cmd=content, headers=headers, plainData=True, graph=True)
 
     def serialize(
@@ -362,25 +370,10 @@ class FusekiStrategy:
 
         if prefix and isinstance(cmd, str):
             cmd = (
-                " ".join(f"PREFIX {k}: <{v}>" for k, v in self.__namespaces.items())
-                + cmd
+                " ".join(f"PREFIX {k}: <{v}>" for k, v in self.__namespaces.items() if v)
+                + " " + cmd
             )
         
-
-        kommando = dict(
-            method=method,
-            url=ep,
-            headers=headers,
-            params=({"query": cmd} if method == "GET" and cmd else None),
-            data=(
-                cmd
-                if method == "POST" and plainData
-                else {"update": cmd}
-                if method == "POST" and not plainData
-                else None
-            )
-            )
-        print(kommando)
  
         try:
             r: requests.Response = requests.request(

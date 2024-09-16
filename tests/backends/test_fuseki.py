@@ -177,8 +177,8 @@ class Fuseki_TestCase(unittest.TestCase):
     ## ADDITIONAL METHODS
 
     def test_parse(self):
-        ontology_file_path_ttl = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
-        ontology_file_path_rdf = os.path.abspath("PyBackTrip/tests/ontologies/food.rdf")
+        ontology_file_path_ttl = os.path.abspath("tests/ontologies/food.ttl")
+        ontology_file_path_rdf = os.path.abspath("tests/ontologies/food.rdf")
 
         self._parseTestSkeleton(
             input_format="turtle",
@@ -213,13 +213,13 @@ class Fuseki_TestCase(unittest.TestCase):
         )
 
     def test_serialize(self):
-        ontology_file_path = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
+        ontology_file_path = os.path.abspath("tests/ontologies/food.ttl")
 
         self.triplestore.parse(ontology_file_path)
         db_content = self.triplestore.serialize()
 
         with open(
-            os.path.abspath("PyBackTrip/tests/ontologies/fuseki_expected_ontology.ttl"),
+            os.path.abspath("tests/ontologies/fuseki_expected_ontology.ttl"),
             "r",
         ) as out_file:
             expected_serialization = out_file.read()
@@ -329,7 +329,7 @@ class Fuseki_TestCase(unittest.TestCase):
 
         with open(
             os.path.abspath(
-                f"PyBackTrip/tests/ontologies/fuseki_expected_ontology.{'rdf' if input_format == 'rdf' else 'ttl'}"
+                f"tests/ontologies/fuseki_expected_ontology.{'rdf' if input_format == 'rdf' else 'ttl'}"
             ),
             "r",
         ) as out_file:

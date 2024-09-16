@@ -1,0 +1,71 @@
+---
+
+version: 1
+
+prefixes:
+  ss3: "http://open-model.eu/ontologies/ss3#"
+
+simulation_resources:
+
+  ss3:AbaqusSimulation:
+    # Name of the AiiDA plugin to use
+    aiida_plugin: execflow.exec_wrapper
+    # The command for running the simulation tool (should we support multi-line as for `install_command`?)
+    command: run_abaqus.sh
+    # The static & template files needed in the cwd on the node to run the simulation
+    # since our files are installed and available in path, we can omit this for now
+    # However, a solution must be found, as such templates are needed for other use cases
+    #files:
+    #  - target_file: "run_abaqus.sh"
+    #    source_uri: "file://SS3_wrapper/cli/run_abaqus.sh"
+    #  - target_file: "expand_abaqusconf.py"
+    #    source_uri: "file://SS3_wrapper/cli/expand_abaqusconf.py"
+    # The commands for installing the wrapper to the simulation tool
+    install_command: pip install git+ssh://git@github.com:H2020-OpenModel/SS3_wrappers.git@master
+
+    aiida_datanodes:
+      ss3:DeformationHistory: http://onto-ns.com/meta/2.0/core.singlefile
+
+    # Documentation of all Abaqus input:
+    input: # Documentation of all Abaqus input to be provided as sink pipeline by an oteapi pipeline
+      # Documentation of Abaqus input for Aluminium material card
+      ss3:AluminiumMaterialCard:
+        - function:
+            functionType: application/vnd.dlite-generate
+            configuration:
+              driver: plugin_abaqus_material
+              # the name of the file is as expected by the Abaqus input template
+              location: Section_materials_al.inp
+              datamodel: http://www.sintef.no/calm/0.1/AluminiumMaterialCard
+
+      # Documentation for Abaqus input for Concrete material card
+      ss3:ConcreteMaterialCard:
+        - function:
+            functionType: application/vnd.dlite-generate
+            configuration:
+              driver: plugin_abaqus_material
+              # the name of the file is as expected by the Abaqus input template
+              location: Section_materials_concrete.inp
+              datamodel:  http://www.sintef.no/calm/0.1/ConcreteMaterialCard
+
+      # Documentation for Abaqus configurations
+      ss3:AbaqusConfiguration:
+        - function:
+            functionType: application/vnd.dlite-generate
+            configuration:
+              # This will generate a json file that should be pre-processed with
+              # `expand_abaqusconf.py` in the target dir by the wrapper
+              driver: json
+              location: abaqusconf.json
+              datamodel:  http://www.sintef.no/calm/0.1/AbaqusConfiguration
+
+    # Documentation of all Abaqus ouput:
+    output: # Documentation of all Abaqus ouput as source partial pipeline in an oteapi pipeline
+      # Documentation of Abaqus input for Aluminium material card
+      ss3:DeformationHistory:
+        - dataresource:
+            mediaType: application/vnd.dlite-parse
+            downloadUrl: abaqus_deformation_history.txt
+            configuration:
+                driver: plugin_abaqus_output
+                datamodel: http://www.sintef.no/calm/0.1/AbaqusDeformationHistory

@@ -1,0 +1,76 @@
+depth: 0
+iri: http://open-model.eu/ontologies/ss3#DeformationHistory
+routeChoices: 5
+localChoices: 1
+kpas:
+    Accuracy: 0
+    SimulationTime: 0
+    OpenSource: 0
+children:
+-   depth: 1
+    iri: http://open-model.eu/ontologies/ss3#AbaqusSimulation
+    routeChoices: 5
+    localChoices: 1
+    kpas:
+        Accuracy: 50
+        SimulationTime: 5000.0
+        OpenSource: 1
+    predicate: hasOutput
+    children:
+    -   depth: 2
+        iri: http://open-model.eu/ontologies/ss3#AbaqusConfiguration
+        routeChoices: 1
+        localChoices: 1
+        kpas:
+            Accuracy: 0
+            SimulationTime: 0
+            OpenSource: 0
+        predicate: hasInput
+        children:
+        -   depth: 3
+            iri: http://open-model.eu/ontologies/ss3kb#abaqus_config1
+            routeChoices: 1
+            localChoices: 0
+            kpas:
+                Accuracy: 0
+                SimulationTime: 0
+                OpenSource: 0
+            predicate: individual
+    -   depth: 2
+        iri: http://open-model.eu/ontologies/ss3#AluminiumMaterialCard
+        routeChoices: 5
+        localChoices: 2
+        kpas:
+            Accuracy: 0
+            SimulationTime: 0
+            OpenSource: 0
+        predicate: hasInput
+        children:
+        -   depth: 3
+            iri: http://open-model.eu/ontologies/ss3kb#abaqus_materialcard_al1
+            routeChoices: 1
+            localChoices: 0
+            kpas:
+                Accuracy: 0
+                SimulationTime: 0
+                OpenSource: 0
+            predicate: individual
+    -   depth: 2
+        iri: http://open-model.eu/ontologies/ss3#ConcreteMaterialCard
+        routeChoices: 1
+        localChoices: 1
+        kpas:
+            Accuracy: 0
+            SimulationTime: 0
+            OpenSource: 0
+        predicate: hasInput
+        children:
+        -   depth: 3
+            iri: http://open-model.eu/ontologies/ss3kb#abaqus_materialcard_concrete1
+            routeChoices: 1
+            localChoices: 0
+            kpas:
+                Accuracy: 0
+                SimulationTime: 0
+                OpenSource: 0
+            predicate: individual
