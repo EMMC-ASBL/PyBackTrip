@@ -118,7 +118,14 @@ class FusekiStrategy:
             + " ."
             for triple in triples
         )
+        #http://localhost:3030/openmodel
+
         cmd = f"INSERT DATA {{ GRAPH <{self.__GRAPH}> {{ {spec} }} }}"
+        print(cmd)
+        cmd = f"INSERT DATA {{ GRAPH <http://localhost:3030/openmodel> {{ {spec} }} }}"
+        print('---------------')
+        print(cmd)
+        print('******************')
         return self.__request("POST", cmd)
 
     def remove(self, triple: "Triple") -> object:
@@ -192,6 +199,8 @@ class FusekiStrategy:
             )
 
         headers = {"Content-type": f"{self.__CONTENT_TYPES[format]}"}
+        print('parse cmd', content)
+        print('parse headers', headers)
         self.__request("POST", cmd=content, headers=headers, plainData=True, graph=True)
 
     def serialize(
@@ -356,7 +365,23 @@ class FusekiStrategy:
                 " ".join(f"PREFIX {k}: <{v}>" for k, v in self.__namespaces.items())
                 + cmd
             )
+        
 
+        kommando = dict(
+            method=method,
+            url=ep,
+            headers=headers,
+            params=({"query": cmd} if method == "GET" and cmd else None),
+            data=(
+                cmd
+                if method == "POST" and plainData
+                else {"update": cmd}
+                if method == "POST" and not plainData
+                else None
+            )
+            )
+        print(kommando)
+ 
         try:
             r: requests.Response = requests.request(
                 method=method,
