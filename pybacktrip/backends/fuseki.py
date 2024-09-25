@@ -103,8 +103,6 @@ class FusekiStrategy:
         Returns:
             dict: The result of the operation
         """
-        print('in add triples')
-        #print(self.__namespaces)
 
         spec = " ".join(
             " ".join(
@@ -122,20 +120,9 @@ class FusekiStrategy:
             + " ."
             for triple in triples
         )
-        print('aaaa')
-        i=0
-        for triple in triples:
-            print('---')
-            for value in triple:
-                print(repr(value))
-            i+=1
-            if i > 2:
-                break
-        print('bbbb')
 
         cmd = f"INSERT DATA {{ GRAPH <{self.__GRAPH}> {{ {spec} }} }}"
         headers = {'Content-Type': 'application/sparql-update'}
-        print('cmd', cmd)
         return self.__request("POST", cmd, headers=headers, plainData=True, graph=True)
 
     def remove(self, triple: "Triple") -> object:
