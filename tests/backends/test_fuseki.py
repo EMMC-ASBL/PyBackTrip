@@ -4,7 +4,7 @@ import unittest
 import requests
 from pybacktrip.backends.fuseki import FusekiStrategy
 from rdflib import BNode, URIRef
-from tripper.literal import Literal
+from tripper import RDF, Literal
 
 TRIPLESTORE_HOST = "localhost"
 TRIPLESTORE_PORT = 3030
@@ -127,6 +127,15 @@ class Fuseki_TestCase(unittest.TestCase):
         ]
 
         self.triplestore.add_triples(triple_1)
+
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
+        # converted_triples = self.normalizeTriples(triples)
+
+        self.assertEqual(len(triples), 1)
+
+    def test_add_triples_literal(self):
+        self.triplestore.add_triples((":mydata", RDF.value, Literal(r'"string with escaped quote signs"')))
 
         query_result = self._selectAll()
         triples = self._parseQueryResult(query_result)

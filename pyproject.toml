@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybacktrip"
-version = "1.0.0"
+version = "2.0.1"
 description = "Backends implementation for Tripper"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -12,7 +12,7 @@ authors = [
   {name = "Alessandro Calvio", email = "alessandro.calvio@unibo.it"}
 ]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 4 - Beta",
   "Programming Language :: Python"
 ]
 dependencies = [
