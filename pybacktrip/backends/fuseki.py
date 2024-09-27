@@ -52,9 +52,7 @@ class FusekiStrategy:
         """Execute query on triples
 
         Args:
-            triple (Triple): A `(s, p, o)` tuple where `s`, `p` and `o` should
-                either be None (matching anything) or an exact IRI to
-                match.
+            triple (Triple): A `(s, p, o)` tuple where `s`, `p` and `o` should either be None (matching anything) or an exact IRI to match.
 
         Yields:
             Generator: Matching triples
@@ -68,13 +66,19 @@ class FusekiStrategy:
         if not variables:
             variables.append("*")
         whereSpec = " ".join(
-            f"?{tripleName}"
-            if tripleValue is None
-            else tripleValue
-            if tripleValue.startswith("<")
-            else "<{}{}>".format(self.__namespaces[""], tripleValue[1:])
-            if tripleValue.startswith(":")
-            else f"<{tripleValue}>"
+            (
+                f"?{tripleName}"
+                if tripleValue is None
+                else (
+                    tripleValue
+                    if tripleValue.startswith("<")
+                    else (
+                        "<{}{}>".format(self.__namespaces[""], tripleValue[1:])
+                        if tripleValue.startswith(":")
+                        else f"<{tripleValue}>"
+                    )
+                )
+            )
             for tripleName, tripleValue in zip("spo", triple)
         )
         cmd = f"""
@@ -87,9 +91,11 @@ class FusekiStrategy:
 
         for binding in res["results"]["bindings"]:
             yield tuple(
-                self.__convert_json_entrydict(binding[name])
-                if name in binding
-                else value
+                (
+                    self.__convert_json_entrydict(binding[name])
+                    if name in binding
+                    else value
+                )
                 for name, value in zip("spo", triple)
             )
 
@@ -97,8 +103,7 @@ class FusekiStrategy:
         """Add a sequence of triples.
 
         Args:
-            triples (Sequence[Triple]): A sequence of `(s, p, o)` tuples to add to the
-                triplestore.
+            triples (Sequence[Triple]): A sequence of `(s, p, o)` tuples to add to the triplestore.
 
         Returns:
             dict: The result of the operation
@@ -106,43 +111,57 @@ class FusekiStrategy:
 
         spec = " ".join(
             " ".join(
-                value.n3()
-                if isinstance(value, Literal) and hasattr(value, "n3")
-                else value
-                if value.startswith("<") or value.startswith('"')
-                else "<{}{}>".format(self.__namespaces[""], value[1:])
-                if value.startswith(":")
-                else f"<{value}>"
+                (
+                    value.n3()
+                    if isinstance(value, Literal) and hasattr(value, "n3")
+                    else (
+                        value
+                        if value.startswith("<") or value.startswith('"')
+                        else (
+                            "<{}{}>".format(self.__namespaces[""], value[1:])
+                            if "" in self.__namespaces and value.startswith(":")
+                            else str(value) if value.startswith(":") else f"<{value}>"
+                        )
+                    )
+                )
                 for value in triple
             )
             + " ."
             for triple in triples
         )
+
         cmd = f"INSERT DATA {{ GRAPH <{self.__GRAPH}> {{ {spec} }} }}"
-        return self.__request("POST", cmd)
+        headers = {"Content-Type": "application/sparql-update"}
+        return self.__request("POST", cmd, headers=headers, plainData=True, graph=True)
 
     def remove(self, triple: "Triple") -> object:
         """Remove all matching triples from the backend.
 
         Args:
-            triple (Triple): A `(s, p, o)` tuple where `s`, `p` and `o` should
-                either be None (matching anything) or an exact IRI to
-                match.
+            triple (Triple): A `(s, p, o)` tuple where `s`, `p` and `o` should either be None (matching anything) or an exact IRI to match.
 
         Returns:
             dict: The result of the operation
         """
 
         spec = " ".join(
-            f"?{name}"
-            if value is None
-            else value.n3()
-            if isinstance(value, Literal)
-            else value
-            if value.startswith("<") or value.startswith('"')
-            else "<{}{}>".format(self.__namespaces[""], value[1:])
-            if value.startswith(":")
-            else f"<{value}>"
+            (
+                f"?{name}"
+                if value is None
+                else (
+                    value.n3()
+                    if isinstance(value, Literal)
+                    else (
+                        value
+                        if value.startswith("<") or value.startswith('"')
+                        else (
+                            "<{}{}>".format(self.__namespaces[""], value[1:])
+                            if value.startswith(":")
+                            else f"<{value}>"
+                        )
+                    )
+                )
+            )
             for name, value in zip("spo", triple)
         )
         cmd = f"DELETE WHERE {{ GRAPH <{self.__GRAPH}> {{ { spec } }} }}"
@@ -168,8 +187,7 @@ class FusekiStrategy:
             location: String with relative or absolute URL to source.
             data: String containing the data to be parsed.
             format: Needed if format can not be inferred from source.
-            kwargs: Additional backend-specific parameters controlling
-                the parsing.
+            kwargs: Additional backend-specific parameters controlling the parsing.
         """
 
         content = None
@@ -200,12 +218,9 @@ class FusekiStrategy:
         """Serialise to destination.
 
         Arguments:
-            destination: File name or object to write to. If not defined, the
-                serialisation is returned.
-            format: Format to serialise as. Supported formats, depends on
-                the backend.
-            kwargs: Additional backend-specific parameters controlling
-                the serialisation.
+            destination: File name or object to write to. If not defined, the serialisation is returned.
+            format: Format to serialise as. Supported formats, depends on the backend.
+            kwargs: Additional backend-specific parameters controlling the serialisation.
 
         Returns:
             Serialised string if `destination` is not defined.
@@ -353,7 +368,10 @@ class FusekiStrategy:
 
         if prefix and isinstance(cmd, str):
             cmd = (
-                " ".join(f"PREFIX {k}: <{v}>" for k, v in self.__namespaces.items())
+                " ".join(
+                    f"PREFIX {k}: <{v}>" for k, v in self.__namespaces.items() if v
+                )
+                + " "
                 + cmd
             )
 
@@ -366,9 +384,7 @@ class FusekiStrategy:
                 data=(
                     cmd
                     if method == "POST" and plainData
-                    else {"update": cmd}
-                    if method == "POST" and not plainData
-                    else None
+                    else {"update": cmd} if method == "POST" and not plainData else None
                 ),
             )
             r.raise_for_status()

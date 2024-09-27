@@ -4,7 +4,7 @@ import unittest
 import requests
 from pybacktrip.backends.fuseki import FusekiStrategy
 from rdflib import BNode, URIRef
-from tripper.literal import Literal
+from tripper import RDF, Literal
 
 TRIPLESTORE_HOST = "localhost"
 TRIPLESTORE_PORT = 3030
@@ -134,6 +134,15 @@ class Fuseki_TestCase(unittest.TestCase):
 
         self.assertEqual(len(triples), 1)
 
+    def test_add_triples_literal(self):
+        self.triplestore.add_triples((":mydata", RDF.value, Literal(r'"string with escaped quote signs"')))
+
+        query_result = self._selectAll()
+        triples = self._parseQueryResult(query_result)
+        # converted_triples = self.normalizeTriples(triples)
+
+        self.assertEqual(len(triples), 1)
+
     def test_remove(self):
         triple_1 = [
             (
@@ -177,8 +186,8 @@ class Fuseki_TestCase(unittest.TestCase):
     ## ADDITIONAL METHODS
 
     def test_parse(self):
-        ontology_file_path_ttl = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
-        ontology_file_path_rdf = os.path.abspath("PyBackTrip/tests/ontologies/food.rdf")
+        ontology_file_path_ttl = os.path.abspath("tests/ontologies/food.ttl")
+        ontology_file_path_rdf = os.path.abspath("tests/ontologies/food.rdf")
 
         self._parseTestSkeleton(
             input_format="turtle",
@@ -213,13 +222,13 @@ class Fuseki_TestCase(unittest.TestCase):
         )
 
     def test_serialize(self):
-        ontology_file_path = os.path.abspath("PyBackTrip/tests/ontologies/food.ttl")
+        ontology_file_path = os.path.abspath("tests/ontologies/food.ttl")
 
         self.triplestore.parse(ontology_file_path)
         db_content = self.triplestore.serialize()
 
         with open(
-            os.path.abspath("PyBackTrip/tests/ontologies/fuseki_expected_ontology.ttl"),
+            os.path.abspath("tests/ontologies/fuseki_expected_ontology.ttl"),
             "r",
         ) as out_file:
             expected_serialization = out_file.read()
@@ -329,7 +338,7 @@ class Fuseki_TestCase(unittest.TestCase):
 
         with open(
             os.path.abspath(
-                f"PyBackTrip/tests/ontologies/fuseki_expected_ontology.{'rdf' if input_format == 'rdf' else 'ttl'}"
+                f"tests/ontologies/fuseki_expected_ontology.{'rdf' if input_format == 'rdf' else 'ttl'}"
             ),
             "r",
         ) as out_file:
