@@ -184,7 +184,7 @@ class FusekiStrategy:
 
         Arguments:
             source: File-like object or file name.
-            location: String with relative or absolute URL to source.
+            location: String with a URL linked to source.
             data: String containing the data to be parsed.
             format: Needed if format can not be inferred from source.
             kwargs: Additional backend-specific parameters controlling the parsing.
@@ -201,7 +201,9 @@ class FusekiStrategy:
             else:
                 content = source.read()
         elif location:
-            content = open(location, "rb")
+            resp = requests.get(location)
+            resp.raise_for_status()
+            content = resp.content
         elif data:
             content = data
         else:

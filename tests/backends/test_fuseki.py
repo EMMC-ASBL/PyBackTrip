@@ -188,6 +188,8 @@ class Fuseki_TestCase(unittest.TestCase):
     def test_parse(self):
         ontology_file_path_ttl = os.path.abspath("tests/ontologies/food.ttl")
         ontology_file_path_rdf = os.path.abspath("tests/ontologies/food.rdf")
+        ontology_file_url_ttl = "https://raw.githubusercontent.com/EMMC-ASBL/PyBackTrip/refs/heads/main/tests/ontologies/food.ttl"
+        ontology_file_url_rdf = "https://raw.githubusercontent.com/EMMC-ASBL/PyBackTrip/refs/heads/main/tests/ontologies/food.rdf"
 
         self._parseTestSkeleton(
             input_format="turtle",
@@ -197,7 +199,7 @@ class Fuseki_TestCase(unittest.TestCase):
         self._parseTestSkeleton(
             input_format="turtle",
             input_type="location",
-            ontology_file_path=ontology_file_path_ttl,
+            ontology_file_path=ontology_file_url_ttl,
         )
         self._parseTestSkeleton(
             input_format="turtle",
@@ -213,7 +215,7 @@ class Fuseki_TestCase(unittest.TestCase):
         self._parseTestSkeleton(
             input_format="rdf",
             input_type="location",
-            ontology_file_path=ontology_file_path_rdf,
+            ontology_file_path=ontology_file_url_rdf,
         )
         self._parseTestSkeleton(
             input_format="rdf",
