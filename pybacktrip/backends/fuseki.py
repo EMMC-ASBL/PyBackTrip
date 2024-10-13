@@ -25,6 +25,7 @@ class FusekiStrategy:
 
     __namespaces = {}
     __sparql_endpoint = ""
+    prefer_sparql = True  # prefer tripper.query() over tripper.triples()
 
     # DEFAULT METHODS
 
