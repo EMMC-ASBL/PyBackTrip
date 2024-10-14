@@ -24,6 +24,7 @@ class StardogStrategy:
     __file_extension = {"turtle": ".ttl", "rdf": ".rdf"}
 
     __sparql_endpoints = {}
+    prefer_sparql = True  # prefer tripper.query() over tripper.triples()
 
     def __init__(
         self, base_iri: str, triplestore_url: str, database: str, **kwargs
