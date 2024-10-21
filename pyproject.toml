@@ -27,3 +27,4 @@ repository = "https://github.com/xAlessandroC/PyBackTrip"
 [project.entry-points."tripper.backends"]
 stardog = "pybacktrip.backends.stardog"
 fuseki = "pybacktrip.backends.fuseki"
+omikb = "pybacktrip.backends.omikb"
