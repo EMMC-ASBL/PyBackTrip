@@ -16,7 +16,7 @@ classifiers = [
   "Programming Language :: Python"
 ]
 dependencies = [
-  "tripper>=0.2.4",
+  "tripper>=0.3.4",
   "SPARQLWrapper>=2.0.0",
   "pystardog>=0.14.0"
 ]
