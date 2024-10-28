@@ -65,7 +65,7 @@ ts = Triplestore(backend = "fuseki",
 * **triplestore_url**: the Fuseki service endpoint
 * **database**: the name of the database to use
 
-### Fuseki
+### OMIKB
 ```python
 from tripper import Triplestore
 
