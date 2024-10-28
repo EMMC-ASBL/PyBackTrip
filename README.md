@@ -8,6 +8,8 @@ PyBackTrip currently supports the following triplestore solutions:
 | ----------- | ----------- |
 | Stardog | stardog |
 | Fuseki | fuseki |
+| OMIKB| omikb |
+---
 ---
 
 ## Installation
@@ -61,6 +63,20 @@ ts = Triplestore(backend = "fuseki",
 ```
 * **base_iri**: the base IRI to start with (if it is not defined)
 * **triplestore_url**: the Fuseki service endpoint
+* **database**: the name of the database to use
+
+### Fuseki
+```python
+from tripper import Triplestore
+
+ts = Triplestore(backend = "omikb", 
+                 base_iri = "http://example.com/myontology#", 
+                 triplestore_url = "http://openmodel.app/data", 
+                 database = "dataset"
+)
+```
+* **base_iri**: the base IRI to start with (if it is not defined)
+* **triplestore_url**: the OpenModel KB endpoint
 * **database**: the name of the database to use
 
 
