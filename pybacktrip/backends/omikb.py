@@ -27,7 +27,9 @@ class OmikbStrategy:
         "schema": "http://schema.org/",
     }
 
-    def __init__(self, base_iri: str, triplestore_url: str, database: str, **kwargs) -> None:
+    def __init__(
+        self, base_iri: str, triplestore_url: str, database: str, **kwargs
+    ) -> None:
         """Initialise the OMIKB triplestore.
 
         Args:
@@ -43,20 +45,100 @@ class OmikbStrategy:
     def triples(self, triple: "Triple") -> "Generator":
         """Retrieve triples matching a specific pattern."""
         # Implementation will depend on how kb_toolbox handles queries
-        query = f"SELECT * WHERE {{ GRAPH <{self.__GRAPH}> {{ {triple} }} }}"
-        return self.kb.query(query)
+        variables = [
+            f"?{tripleName}"
+            for tripleName, tripleValue in zip("spo", triple)
+            if tripleValue is None
+        ]
+        if not variables:
+            variables.append("*")
+        whereSpec = " ".join(
+            (
+                f"?{tripleName}"
+                if tripleValue is None
+                else (
+                    tripleValue
+                    if tripleValue.startswith("<")
+                    else (
+                        "<{}{}>".format(self.__namespaces[""], tripleValue[1:])
+                        if tripleValue.startswith(":")
+                        else f"<{tripleValue}>"
+                    )
+                )
+            )
+            for tripleName, tripleValue in zip("spo", triple)
+        )
+
+        query = f"""
+            SELECT {" ".join(variables)}
+            FROM <{self.__GRAPH}>
+            WHERE {{{whereSpec}}}
+        """
+
+        res = self.kb.query(self.format_query(query))
+
+        for binding in res["results"]["bindings"]:
+            yield tuple(
+                (
+                    self.__convert_json_entrydict(binding[name])
+                    if name in binding
+                    else value
+                )
+                for name, value in zip("spo", triple)
+            )
 
     def add_triples(self, triples: Sequence["Triple"]) -> dict:
         """Add triples to the OMIKB."""
         # Construct the SPARQL update query for adding triples
-        cmd = "INSERT DATA { GRAPH <{self.__GRAPH}> { " + " . ".join([f"<{s}> <{p}> <{o}> ." for s, p, o in triples]) + " } }"
-        return self.kb.update(cmd)  # Assuming kb_toolbox has an update method
+        spec = " ".join(
+            " ".join(
+                (
+                    value.n3()
+                    if isinstance(value, Literal) and hasattr(value, "n3")
+                    else (
+                        value
+                        if value.startswith("<") or value.startswith('"')
+                        else (
+                            "<{}{}>".format(self.__namespaces[""], value[1:])
+                            if "" in self.__namespaces and value.startswith(":")
+                            else str(value) if value.startswith(":") else f"<{value}>"
+                        )
+                    )
+                )
+                for value in triple
+            )
+            + " ."
+            for triple in triples
+        )
 
+        cmd = f"INSERT DATA {{ GRAPH <{self.__GRAPH}> {{ {spec} }} }}"
+        return self.kb.update(cmd)  # Assuming kb_toolbox has an update method
 
     def remove(self, triple: "Triple") -> object:
         """Remove triples from the OMIKB."""
         # Construct the SPARQL delete query
-        cmd = f"DELETE WHERE {{ GRAPH <{self.__GRAPH}> {{ {triple} }} }}"
+        spec = " ".join(
+            (
+                f"?{name}"
+                if value is None
+                else (
+                    value.n3()
+                    if isinstance(value, Literal)
+                    else (
+                        value
+                        if value.startswith("<") or value.startswith('"')
+                        else (
+                            "<{}{}>".format(self.__namespaces[""], value[1:])
+                            if value.startswith(":")
+                            else f"<{value}>"
+                        )
+                    )
+                )
+            )
+            for name, value in zip("spo", triple)
+        )
+        cmd = f"DELETE WHERE {{ GRAPH <{self.__GRAPH}> {{ { spec } }} }}"
+
         return self.kb.update(cmd)
 
     # def remove(self, subject: str, predicate: str, object: str) -> object:
@@ -69,19 +151,34 @@ class OmikbStrategy:
     #     query = f"FROM <{self.__GRAPH}> {query_object}"
     #     return self.kb.query(query)
 
-
     def query(self, query_object: str, **kwargs):
         """Executes a SPARQL query against the OMIKB."""
         print(f"Executing SPARQL query: {query_object}")
         try:
-            response = self.kb.query(query_object)
+            response = self.kb.query(self.format_query(query_object))
             if response.status_code == 400:
                 print(f"Bad Request: {response.text}")  # Log the error response
                 return None
-            return response.json()  # Assuming the response contains JSON
+            res = response.json()
         except Exception as e:
             print(f"Query execution failed: {e}")
             return None
+
+        queryVars = res["head"]["vars"]
+        queryBindings = res["results"]["bindings"]
+
+        triplesRes = []
+        for binding in queryBindings:
+            currentTriple = ()
+            for var in queryVars:
+                currentTriple = currentTriple + (
+                    self.__convert_json_entrydict(binding[var]),
+                )
+            triplesRes.append(currentTriple)
+        
+        print(f"Query result: {triplesRes}")
+
+        return triplesRes
 
     def bind(self, prefix: str, namespace: str):
         """Bind a namespace."""
@@ -95,12 +192,14 @@ class OmikbStrategy:
         """Get the SPARQL namespaces."""
         return self.__namespaces
 
-    def parse(self,
-              source: Union[str, IO] = "",
-              location: str = "",
-              data: str = "",
-              format: str = "turtle",
-              **kwargs):
+    def parse(
+        self,
+        source: Union[str, IO] = "",
+        location: str = "",
+        data: str = "",
+        format: str = "turtle",
+        **kwargs,
+    ):
         """
         Parse an ontology from a source and add the resulting triples to the triplestore.
 
@@ -125,10 +224,14 @@ class OmikbStrategy:
             self.kb.import_ontology(source, **kwargs)  # Remove format if not supported
         elif location:
             # If location (URL) is provided, fetch and parse the ontology from the URL
-            self.kb.import_ontology(location, **kwargs)  # Remove format if not supported
+            self.kb.import_ontology(
+                location, **kwargs
+            )  # Remove format if not supported
         elif data:
             # If ontology data is provided as a string, parse it directly
-            self.kb.import_ontology(data=data, **kwargs)  # Remove format if not supported
+            self.kb.import_ontology(
+                data=data, **kwargs
+            )  # Remove format if not supported
 
         print("Ontology parsing complete, triples added to the triplestore.")
 
@@ -145,10 +248,16 @@ class OmikbStrategy:
         Returns:
             Serialised string if `destination` is not defined.
         """
-
-        content = self.__request("GET", prefix=False, graph=True, json=False)[
-            "response"
-        ]
+        q = self.format_query(
+            f"SELECT * WHERE {{ GRAPH <{self.__GRAPH}> {{ ?s ?p ?o }} }}"
+        )
+        print("QUERY: ", q)
+        response = self.kb.query(q)
+        
+        if response.status_code == 400:
+            print(f"Bad Request: {response.text}")  # Log the error response
+            return None
+        content = response.text
 
         if not destination:
             return content
@@ -160,6 +269,11 @@ class OmikbStrategy:
 
         return ""
 
+    def format_query(self, query: str) -> str:
+        """Format a SPARQL query with the namespaces."""
+        for prefix, namespace in self.__namespaces.items():
+            query = f"PREFIX {prefix}: <{namespace}> {query}"
+        return query
 
     @classmethod
     def create_database(cls, database: str, **kwargs):
@@ -172,20 +286,19 @@ class OmikbStrategy:
 
         pass
 
-
     ## For OMIKB Backend this method could be dangerous
 
-    # @classmethod
-    # def remove_database(cls, triplestore_url: str, database: str, **kwargs):
-    #     """Remove a database in backend.
-    #
-    #     Args:
-    #         triplestore_url (str): Endpoint of the triplestore.
-    #         database (str): Name of the database to be removed.
-    #         kwargs: Keyword arguments passed to the backend remove_database() method.
-    #     """
-    #
-    #     requests.delete(f"{triplestore_url}/{database}?graph={cls.__GRAPH}")
+    @classmethod
+    def remove_database(cls, triplestore_url: str, database: str, **kwargs):
+        """Remove a database in backend.
+    
+        Args:
+            triplestore_url (str): Endpoint of the triplestore.
+            database (str): Name of the database to be removed.
+            kwargs: Keyword arguments passed to the backend remove_database() method.
+        """
+    
+        requests.delete(f"{triplestore_url}/{database}?graph={cls.__GRAPH}")
 
     @classmethod
     def list_databases(cls, **kwargs) -> str:
@@ -198,12 +311,37 @@ class OmikbStrategy:
 
         return cls.__GRAPH
 
+    def __convert_json_entrydict(self, entrydict: dict) -> str:
+        """Convert JSON entry dict in string format
 
+        Args:
+            entrydict (dict): Entry dict to be converted
 
+        Raises:
+            ValueError: Unexpected type in entrydict
 
+        Returns:
+            str: The entry dict correctly formatted as a string
+        """
 
+        if entrydict["type"] == "uri":
+            if entrydict["value"].startswith(":"):
+                return "<{}{}>".format(self.__namespaces[""], entrydict["value"][1:])
+            else:
+                return entrydict["value"]
 
+        if entrydict["type"] == "literal":
+            return Literal(
+                entrydict["value"],
+                lang=entrydict.get("xml:lang"),
+                datatype=entrydict.get("datatype"),
+            )
 
+        if entrydict["type"] == "bnode":
+            return (
+                entrydict["value"]
+                if entrydict["value"].startswith("_:")
+                else f"_:{entrydict['value']}"
+            )
 
-
-
+        raise ValueError(f"Unexpected type in entrydict: {entrydict}")
