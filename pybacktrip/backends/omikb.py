@@ -1,32 +1,15 @@
-""" Authors: Owain Beynon (UCL)
-             Adham Hashibon (UCL) """
-
-from typing import Union, Sequence
-from tripper import Literal
-from omikb.omikb import kb_toolbox
-from typing import IO, TYPE_CHECKING
-from typing import Literal as L
-from typing import Union
+import json
+import os
 import requests
-from tripper import Literal
+from io import BufferedReader
+from typing import Union
+from typing import Literal as L
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from typing import Generator
+import yaml
 
-    from tripper.triplestore import Triple
+from .fuseki_base import FusekiBaseStrategy
 
-
-class OmikbStrategy:
-    __GRAPH = "graph://main"
-    __CONTENT_TYPES = {"turtle": "text/turtle", "rdf": "application/rdf+xml"}
-    __DEFAULT_NAMESPACES = {
-        "owl": "http://www.w3.org/2002/07/owl#",
-        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-        "schema": "http://schema.org/",
-    }
-
+class OmikbStrategy(FusekiBaseStrategy):
     def __init__(
         self, base_iri: str, triplestore_url: str, database: str, **kwargs
     ) -> None:
@@ -38,310 +21,108 @@ class OmikbStrategy:
             database (str): Database of the OMIKB to be used.
             kwargs (object): Additional keyword arguments.
         """
-        self.__namespaces = self.__DEFAULT_NAMESPACES.copy()
-        self.__namespaces[""] = base_iri
-        self.kb = kb_toolbox()  # Initialize your kb_toolbox here
+        super().__init__(base_iri, triplestore_url, database, **kwargs)
 
-    def triples(self, triple: "Triple") -> "Generator":
-        """Retrieve triples matching a specific pattern."""
-        # Implementation will depend on how kb_toolbox handles queries
-        variables = [
-            f"?{tripleName}"
-            for tripleName, tripleValue in zip("spo", triple)
-            if tripleValue is None
-        ]
-        if not variables:
-            variables.append("*")
-        whereSpec = " ".join(
-            (
-                f"?{tripleName}"
-                if tripleValue is None
-                else (
-                    tripleValue
-                    if tripleValue.startswith("<")
-                    else (
-                        "<{}{}>".format(self.__namespaces[""], tripleValue[1:])
-                        if tripleValue.startswith(":")
-                        else f"<{tripleValue}>"
-                    )
-                )
+        with open(os.path.expanduser("~/omikb.yml"), "r") as file:
+            config = yaml.safe_load(file)
+
+        self.hub_iri = config["jupyter"]["hub"]
+        self.hub_token = config["jupyter"]["token"]
+
+        self.endpoint = {
+            "GET": config["services"]["kb"]["end_point"]["query"],
+            "POST": config["services"]["kb"]["end_point"]["data"]
+        }
+
+        print(f"token= {self.hub_token}")
+
+        self.username = config["jupyter"]["username"]
+        print(f"hub user name is {self.username}")
+        self.hub_api_header = {
+            "Authorization": f"token {self.hub_token}",
+        }
+
+        response = requests.get(
+            f"{self.hub_iri}/hub/api/users/{self.username}", headers=self.hub_api_header
+        )
+        if response.status_code != 200:
+            raise ConnectionError(
+                f"Error connecting to Jupyter Hub/fetching user data Failed with: {response.status_code} - \
+                      \nSorry, you are not able to use OMI - Contact Admin"
             )
-            for tripleName, tripleValue in zip("spo", triple)
+
+        user_data = response.json()
+        auth_state = user_data.get("auth_state", {})
+        self.access_token = auth_state.get("access_token", {})
+        print(
+            f"Hello {self.username}: Your access token is obtained: (Showing last 10 digits only) "
+            f"{self.access_token[-10:]}"
         )
 
-        query = f"""
-            SELECT {" ".join(variables)}
-            FROM <{self.__GRAPH}>
-            WHERE {{{whereSpec}}}
-        """
+        self.userinfo = user_data["auth_state"]["oauth_user"]
 
-        res = self.kb.query(self.format_query(query))
-
-        for binding in res["results"]["bindings"]:
-            yield tuple(
-                (
-                    self.__convert_json_entrydict(binding[name])
-                    if name in binding
-                    else value
-                )
-                for name, value in zip("spo", triple)
-            )
-
-    def add_triples(self, triples: Sequence["Triple"]) -> dict:
-        """Add triples to the OMIKB."""
-        # Construct the SPARQL update query for adding triples
-        spec = " ".join(
-            " ".join(
-                (
-                    value.n3()
-                    if isinstance(value, Literal) and hasattr(value, "n3")
-                    else (
-                        value
-                        if value.startswith("<") or value.startswith('"')
-                        else (
-                            "<{}{}>".format(self.__namespaces[""], value[1:])
-                            if "" in self.__namespaces and value.startswith(":")
-                            else str(value) if value.startswith(":") else f"<{value}>"
-                        )
-                    )
-                )
-                for value in triple
-            )
-            + " ."
-            for triple in triples
+        print(
+            "Initialised Knowledge Base and OMI access from the jupyter interface for the user:"
         )
+        print(print(json.dumps(self.userinfo, indent=2)))
 
-        cmd = f"INSERT DATA {{ GRAPH <{self.__GRAPH}> {{ {spec} }} }}"
-        return self.kb.update(cmd)  # Assuming kb_toolbox has an update method
-
-    def remove(self, triple: "Triple") -> object:
-        """Remove triples from the OMIKB."""
-        # Construct the SPARQL delete query
-        spec = " ".join(
-            (
-                f"?{name}"
-                if value is None
-                else (
-                    value.n3()
-                    if isinstance(value, Literal)
-                    else (
-                        value
-                        if value.startswith("<") or value.startswith('"')
-                        else (
-                            "<{}{}>".format(self.__namespaces[""], value[1:])
-                            if value.startswith(":")
-                            else f"<{value}>"
-                        )
-                    )
-                )
-            )
-            for name, value in zip("spo", triple)
-        )
-        cmd = f"DELETE WHERE {{ GRAPH <{self.__GRAPH}> {{ { spec } }} }}"
-
-        return self.kb.update(cmd)
-
-    # def remove(self, subject: str, predicate: str, object: str) -> object:
-    #     """Remove triples from the OMIKB."""
-    #     cmd = f"DELETE WHERE {{ GRAPH <{self.__GRAPH}> {{ <{subject}> <{predicate}> <{object}> }} }}"
-    #     return self.kb.update(cmd)
-
-    # def query(self, query_object: str, **kwargs) -> list:
-    #     """Execute a SPARQL query."""
-    #     query = f"FROM <{self.__GRAPH}> {query_object}"
-    #     return self.kb.query(query)
-
-    def query(self, query_object: str, **kwargs):
-        """Executes a SPARQL query against the OMIKB."""
-        print(f"Executing SPARQL query: {query_object}")
-        try:
-            response = self.kb.query(self.format_query(query_object))
-            if response.status_code == 400:
-                print(f"Bad Request: {response.text}")  # Log the error response
-                return None
-            res = response.json()
-        except Exception as e:
-            print(f"Query execution failed: {e}")
-            return None
-
-        queryVars = res["head"]["vars"]
-        queryBindings = res["results"]["bindings"]
-
-        triplesRes = []
-        for binding in queryBindings:
-            currentTriple = ()
-            for var in queryVars:
-                currentTriple = currentTriple + (
-                    self.__convert_json_entrydict(binding[var]),
-                )
-            triplesRes.append(currentTriple)
-        
-        print(f"Query result: {triplesRes}")
-
-        return triplesRes
-
-    def bind(self, prefix: str, namespace: str):
-        """Bind a namespace."""
-        if namespace:
-            self.__namespaces[prefix] = namespace
-        else:
-            if prefix in self.__namespaces:
-                del self.__namespaces[prefix]
-
-    def namespaces(self) -> dict:
-        """Get the SPARQL namespaces."""
-        return self.__namespaces
-
-    def parse(
+    def request(
         self,
-        source: Union[str, IO] = "",
-        location: str = "",
-        data: str = "",
-        format: str = "turtle",
-        **kwargs,
-    ):
-        """
-        Parse an ontology from a source and add the resulting triples to the triplestore.
+        method: L["GET", "POST"],
+        cmd: Union[str, BufferedReader] = "",
+        prefix: bool = True,
+        headers: dict = {},
+        plainData: bool = False,
+        graph: bool = False,
+        json: bool = True,
+    ) -> dict:
+        """Generic REST method caller for the Triplestore
 
         Args:
-            source: File-like object or file name containing the ontology data.
-            location: URL string pointing to the ontology source.
-            data: String with ontology content directly.
-            format: Format of the ontology (e.g., 'turtle', 'rdfxml', etc.).
-            kwargs: Additional parameters to pass to the backend.
-
-        Raises:
-            ValueError: If none of 'source', 'location', or 'data' is provided.
-        """
-
-        # Ensure at least one input source is provided
-        if not source and not location and not data:
-            raise ValueError("One of 'source', 'location', or 'data' must be provided.")
-
-        # Prioritize parsing from 'source', 'location', or 'data'
-        if source:
-            # If source is provided, handle file or file-like object
-            self.kb.import_ontology(source, **kwargs)  # Remove format if not supported
-        elif location:
-            # If location (URL) is provided, fetch and parse the ontology from the URL
-            self.kb.import_ontology(
-                location, **kwargs
-            )  # Remove format if not supported
-        elif data:
-            # If ontology data is provided as a string, parse it directly
-            self.kb.import_ontology(
-                data=data, **kwargs
-            )  # Remove format if not supported
-
-        print("Ontology parsing complete, triples added to the triplestore.")
-
-    def serialize(
-        self, destination: Union[str, IO] = "", format: str = "turtle", **kwargs
-    ) -> str:
-        """Serialise to destination.
-
-        Arguments:
-            destination: File name or object to write to. If not defined, the serialisation is returned.
-            format: Format to serialise as. Supported formats, depends on the backend.
-            kwargs: Additional backend-specific parameters controlling the serialisation.
+            method (Literal["GET", "POST"]): Method of the request.
+            cmd (Union[str, BufferedReader], optional): Command to be executed. Defaults to "".
+            prefix (bool, optional): If the prefixes need to be added to the query. Defaults to True.
+            headers (dict, optional): Custom headers. Defaults to {}.
+            plainData (bool, optional): If data needs a format or is plain. Defaults to False.
+            graph (bool, optional): If the endpoint needs to specify the graph. Defaults to False.
+            json (bool, optional): If the result is a JSON or a dict containing the result as string. Defaults to True.
 
         Returns:
-            Serialised string if `destination` is not defined.
+            dict: Dict containing the result as JSON or text
         """
-        q = self.format_query(
-            f"SELECT * WHERE {{ GRAPH <{self.__GRAPH}> {{ ?s ?p ?o }} }}"
-        )
-        print("QUERY: ", q)
-        response = self.kb.query(q)
+
+        if method not in ["GET", "POST"]:
+            print("Method unknown")
+            return {}
+
+        ep =  self.endpoint[method]
+
+        if prefix and isinstance(cmd, str):
+            cmd = (
+                " ".join(f"PREFIX {k}: <{v}>" for k, v in self.namespaces().items() if v)
+                + " "
+                + cmd
+            )
+
+        headers["Authorization"] = f"Bearer {self.access_token}"
+        headers["Accept"] = "application/json"
         
-        if response.status_code == 400:
-            print(f"Bad Request: {response.text}")  # Log the error response
-            return None
-        content = response.text
-
-        if not destination:
-            return content
-        elif isinstance(destination, str):
-            with open(destination, "w") as f:
-                f.write(content)
-        else:
-            destination.write(content)
-
-        return ""
-
-    def format_query(self, query: str) -> str:
-        """Format a SPARQL query with the namespaces."""
-        for prefix, namespace in self.__namespaces.items():
-            query = f"PREFIX {prefix}: <{namespace}> {query}"
-        return query
-
-    @classmethod
-    def create_database(cls, database: str, **kwargs):
-        """Create a new database in backend.
-
-        Args:
-            database (str): Name of the new database.
-            kwargs: Keyword arguments passed to the backend create_database() method.
-        """
-
-        pass
-
-    ## For OMIKB Backend this method could be dangerous
-
-    @classmethod
-    def remove_database(cls, triplestore_url: str, database: str, **kwargs):
-        """Remove a database in backend.
-    
-        Args:
-            triplestore_url (str): Endpoint of the triplestore.
-            database (str): Name of the database to be removed.
-            kwargs: Keyword arguments passed to the backend remove_database() method.
-        """
-    
-        requests.delete(f"{triplestore_url}/{database}?graph={cls.__GRAPH}")
-
-    @classmethod
-    def list_databases(cls, **kwargs) -> str:
-        """For backends that supports multiple databases, list of all
-        databases.
-
-        Args:
-            kwargs: Keyword arguments passed to the backend list_database() method.
-        """
-
-        return cls.__GRAPH
-
-    def __convert_json_entrydict(self, entrydict: dict) -> str:
-        """Convert JSON entry dict in string format
-
-        Args:
-            entrydict (dict): Entry dict to be converted
-
-        Raises:
-            ValueError: Unexpected type in entrydict
-
-        Returns:
-            str: The entry dict correctly formatted as a string
-        """
-
-        if entrydict["type"] == "uri":
-            if entrydict["value"].startswith(":"):
-                return "<{}{}>".format(self.__namespaces[""], entrydict["value"][1:])
-            else:
-                return entrydict["value"]
-
-        if entrydict["type"] == "literal":
-            return Literal(
-                entrydict["value"],
-                lang=entrydict.get("xml:lang"),
-                datatype=entrydict.get("datatype"),
+        try:
+            r: requests.Response = requests.request(
+                method="POST",
+                url=ep,
+                headers=headers,
+                params=({"query": cmd} if method == "GET" and cmd else None),
+                data=(
+                    cmd
+                    if method == "POST" and plainData
+                    else {"update": cmd} if method == "POST" and not plainData else None
+                ),
             )
-
-        if entrydict["type"] == "bnode":
-            return (
-                entrydict["value"]
-                if entrydict["value"].startswith("_:")
-                else f"_:{entrydict['value']}"
-            )
-
-        raise ValueError(f"Unexpected type in entrydict: {entrydict}")
+            r.raise_for_status()
+            if r.status_code == 200:
+                return r.json() if json else {"response": r.text}
+            return {}
+        except requests.RequestException as e:
+            print(e)
+            return {}
