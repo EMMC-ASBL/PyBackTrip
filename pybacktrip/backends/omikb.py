@@ -9,6 +9,7 @@ import yaml
 
 from .fuseki_base import FusekiBaseStrategy
 
+
 class OmikbStrategy(FusekiBaseStrategy):
     def __init__(
         self, base_iri: str, triplestore_url: str, database: str, **kwargs
@@ -31,7 +32,7 @@ class OmikbStrategy(FusekiBaseStrategy):
 
         self.endpoint = {
             "GET": config["services"]["kb"]["end_point"]["query"],
-            "POST": config["services"]["kb"]["end_point"]["data"]
+            "POST": config["services"]["kb"]["end_point"]["data"],
         }
 
         print(f"token= {self.hub_token}")
@@ -95,18 +96,20 @@ class OmikbStrategy(FusekiBaseStrategy):
             print("Method unknown")
             return {}
 
-        ep =  self.endpoint[method]
+        ep = self.endpoint[method]
 
         if prefix and isinstance(cmd, str):
             cmd = (
-                " ".join(f"PREFIX {k}: <{v}>" for k, v in self.namespaces().items() if v)
+                " ".join(
+                    f"PREFIX {k}: <{v}>" for k, v in self.namespaces().items() if v
+                )
                 + " "
                 + cmd
             )
 
         headers["Authorization"] = f"Bearer {self.access_token}"
         headers["Accept"] = "application/json"
-        
+
         try:
             r: requests.Response = requests.request(
                 method="POST",

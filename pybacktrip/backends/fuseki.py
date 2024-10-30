@@ -7,24 +7,6 @@ from .fuseki_base import FusekiBaseStrategy
 
 
 class FusekiStrategy(FusekiBaseStrategy):
-    def __init__(
-        self,
-        base_iri: str,
-        triplestore_url: str,
-        database: str,
-        **kwargs,
-    ) -> None:
-        """Initialise triplestore.
-
-        Args:
-            baseIri (str): Optional base IRI to initiate the triplestore from.
-            triplestoreUrl (str): URL of the Triplestore.
-            database (str): Database of the Triplestore to be used.
-            kwargs (object): Additional keyword arguments passed to the backend.
-        """
-
-        super().__init__(base_iri, triplestore_url, database, **kwargs)
-    
     def request(
         self,
         method: L["GET", "POST"],
