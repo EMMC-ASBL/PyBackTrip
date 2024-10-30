@@ -259,7 +259,6 @@ class FusekiBaseStrategy:
         )
 
         res = self.request("GET", queryStr)
-        print(res)
 
         queryVars = res["head"]["vars"]
         queryBindings = res["results"]["bindings"]
