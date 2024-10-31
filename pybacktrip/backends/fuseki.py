@@ -1,15 +1,11 @@
-from io import BufferedReader
-from typing import IO, TYPE_CHECKING
-from typing import Literal as L
-from typing import Union
-
 import requests
+from io import BufferedReader
+from typing import IO, TYPE_CHECKING, Union, Literal as L
 from tripper import Literal
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Generator
-
     from tripper.triplestore import Triple
 
 
@@ -22,10 +18,6 @@ class FusekiStrategy:
         "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
         "schema": "http://schema.org/",
     }
-
-    __namespaces = {}
-    __sparql_endpoint = ""
-    prefer_sparql = True  # prefer tripper.query() over tripper.triples()
 
     # DEFAULT METHODS
 
@@ -45,9 +37,13 @@ class FusekiStrategy:
             kwargs (object): Additional keyword arguments passed to the backend.
         """
 
+        self.__namespaces = {}
+        self.prefer_sparql = True  # prefer tripper.query() over tripper.triples()
+
         self.__namespaces.update(self.__DEFAULT_NAMESPACES)
         self.__namespaces[""] = base_iri
-        self.__sparql_endpoint = f"{triplestore_url}/{database}"
+        self.sparql_endpoint = f"{triplestore_url}/{database}"
+        self.graph = self.__GRAPH
 
     def triples(self, triple: "Triple") -> "Generator":
         """Execute query on triples
@@ -88,7 +84,7 @@ class FusekiStrategy:
             WHERE {{{whereSpec}}}
         """
 
-        res = self.__request("GET", cmd)
+        res = self._request("GET", cmd)
 
         for binding in res["results"]["bindings"]:
             yield tuple(
@@ -133,7 +129,7 @@ class FusekiStrategy:
 
         cmd = f"INSERT DATA {{ GRAPH <{self.__GRAPH}> {{ {spec} }} }}"
         headers = {"Content-Type": "application/sparql-update"}
-        return self.__request("POST", cmd, headers=headers, plainData=True, graph=True)
+        return self._request("POST", cmd, headers=headers, plainData=True, graph=True)
 
     def remove(self, triple: "Triple") -> object:
         """Remove all matching triples from the backend.
@@ -167,7 +163,7 @@ class FusekiStrategy:
         )
         cmd = f"DELETE WHERE {{ GRAPH <{self.__GRAPH}> {{ { spec } }} }}"
 
-        return self.__request("POST", cmd)
+        return self._request("POST", cmd)
 
     # ADDITIONAL METHODS
 
@@ -213,7 +209,7 @@ class FusekiStrategy:
             )
 
         headers = {"Content-type": f"{self.__CONTENT_TYPES[format]}"}
-        self.__request("POST", cmd=content, headers=headers, plainData=True, graph=True)
+        self._request("POST", cmd=content, headers=headers, plainData=True, graph=True)
 
     def serialize(
         self, destination: Union[str, IO] = "", format: str = "turtle", **kwargs
@@ -229,9 +225,7 @@ class FusekiStrategy:
             Serialised string if `destination` is not defined.
         """
 
-        content = self.__request("GET", prefix=False, graph=True, json=False)[
-            "response"
-        ]
+        content = self._request("GET", prefix=False, graph=True, json=False)["response"]
 
         if not destination:
             return content
@@ -259,7 +253,7 @@ class FusekiStrategy:
             f"{query_object[:iw]}FROM <{self.__GRAPH}> {query_object[iw:]}".strip()
         )
 
-        res = self.__request("GET", queryStr)
+        res = self._request("GET", queryStr)
 
         queryVars = res["head"]["vars"]
         queryBindings = res["results"]["bindings"]
@@ -332,9 +326,9 @@ class FusekiStrategy:
 
         return cls.__GRAPH
 
-    # PRIVATE METHODS
+    # PROTECTED METHODS
 
-    def __request(
+    def _request(
         self,
         method: L["GET", "POST"],
         cmd: Union[str, BufferedReader] = "",
@@ -364,15 +358,15 @@ class FusekiStrategy:
             return {}
 
         ep = (
-            self.__sparql_endpoint
+            self.sparql_endpoint
             if not graph
-            else f"{self.__sparql_endpoint}?graph={self.__GRAPH}"
+            else f"{self.sparql_endpoint}?graph={self.graph}"
         )
 
         if prefix and isinstance(cmd, str):
             cmd = (
                 " ".join(
-                    f"PREFIX {k}: <{v}>" for k, v in self.__namespaces.items() if v
+                    f"PREFIX {k}: <{v}>" for k, v in self.namespaces().items() if v
                 )
                 + " "
                 + cmd
@@ -397,6 +391,8 @@ class FusekiStrategy:
         except requests.RequestException as e:
             print(e)
             return {}
+
+    # PRIVATE METHODS
 
     def __convert_json_entrydict(self, entrydict: dict) -> str:
         """Convert JSON entry dict in string format
