@@ -9,7 +9,8 @@ description = "Backends implementation for Tripper"
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [
-  {name = "Alessandro Calvio", email = "alessandro.calvio@unibo.it"}
+  {name = "Alessandro Calvio", email = "alessandro.calvio@unibo.it"},
+  {name = "Michele Brigadoi", email = "michele.brigadoi@unibo.it"}
 ]
 classifiers = [
   "Development Status :: 4 - Beta",

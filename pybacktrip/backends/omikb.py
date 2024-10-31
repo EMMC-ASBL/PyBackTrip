@@ -2,15 +2,14 @@ import json
 import os
 import requests
 from io import BufferedReader
-from typing import Union
-from typing import Literal as L
+from typing import Union, Literal
 
 import yaml
 
-from .fuseki_base import FusekiBaseStrategy
+from .fuseki import FusekiStrategy
 
 
-class OmikbStrategy(FusekiBaseStrategy):
+class OmikbStrategy(FusekiStrategy):
     def __init__(
         self, base_iri: str, triplestore_url: str, database: str, **kwargs
     ) -> None:
@@ -67,9 +66,9 @@ class OmikbStrategy(FusekiBaseStrategy):
         )
         print(print(json.dumps(self.userinfo, indent=2)))
 
-    def request(
+    def _request(
         self,
-        method: L["GET", "POST"],
+        method: Literal["GET", "POST"],
         cmd: Union[str, BufferedReader] = "",
         prefix: bool = True,
         headers: dict = {},
