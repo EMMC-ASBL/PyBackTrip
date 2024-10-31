@@ -134,13 +134,19 @@ class StardogStrategy:
         if not variables:
             variables.append("*")
         where_spec = " ".join(
-            f"?{triple_name}"
-            if triple_value is None
-            else triple_value
-            if triple_value.startswith("<")
-            else "<{}{}>".format(self.__getBaseNamespace(), triple_value[1:])
-            if triple_value.startswith(":")
-            else f"<{triple_value}>"
+            (
+                f"?{triple_name}"
+                if triple_value is None
+                else (
+                    triple_value
+                    if triple_value.startswith("<")
+                    else (
+                        "<{}{}>".format(self.__getBaseNamespace(), triple_value[1:])
+                        if triple_value.startswith(":")
+                        else f"<{triple_value}>"
+                    )
+                )
+            )
             for triple_name, triple_value in zip("spo", triple)
         )
         query = "\n".join(
@@ -165,13 +171,19 @@ class StardogStrategy:
         spec = "\n".join(
             "  "
             + " ".join(
-                value.n3()
-                if isinstance(value, Literal)
-                else value
-                if value.startswith("<") or value.startswith('"')
-                else "<{}{}>".format(self.__getBaseNamespace(), value[1:])
-                if value.startswith(":")
-                else f"<{value}>"
+                (
+                    value.n3()
+                    if isinstance(value, Literal)
+                    else (
+                        value
+                        if value.startswith("<") or value.startswith('"')
+                        else (
+                            "<{}{}>".format(self.__getBaseNamespace(), value[1:])
+                            if value.startswith(":")
+                            else f"<{value}>"
+                        )
+                    )
+                )
                 for value in triple
             )
             + " ."
@@ -187,15 +199,23 @@ class StardogStrategy:
         self.__set_sparql_endpoint("update")
 
         spec = " ".join(
-            f"?{name}"
-            if value is None
-            else value.n3()
-            if isinstance(value, Literal)
-            else value
-            if value.startswith("<") or value.startswith('"')
-            else "<{}{}>".format(self.__getBaseNamespace(), value[1:])
-            if value.startswith(":")
-            else f"<{value}>"
+            (
+                f"?{name}"
+                if value is None
+                else (
+                    value.n3()
+                    if isinstance(value, Literal)
+                    else (
+                        value
+                        if value.startswith("<") or value.startswith('"')
+                        else (
+                            "<{}{}>".format(self.__getBaseNamespace(), value[1:])
+                            if value.startswith(":")
+                            else f"<{value}>"
+                        )
+                    )
+                )
+            )
             for name, value in zip("spo", triple)
         )
         query = f"DELETE WHERE {{ {spec} }}"
