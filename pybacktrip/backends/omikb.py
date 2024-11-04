@@ -31,7 +31,7 @@ class OmikbStrategy(FusekiStrategy):
 
         self.endpoint = {
             "GET": config["services"]["kb"]["end_point"]["query"],
-            "POST": config["services"]["kb"]["end_point"]["data"],
+            "POST": config["services"]["kb"]["end_point"]["base"],
         }
 
         print(f"token= {self.hub_token}")
