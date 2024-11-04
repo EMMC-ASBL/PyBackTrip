@@ -23,7 +23,7 @@ class OmikbStrategy(FusekiStrategy):
         """
         super().__init__(base_iri, triplestore_url, database, **kwargs)
 
-        with open(os.path.expanduser("~/omikb.yml"), "r") as file:
+        with open(os.path.expanduser("~/.omikb.yml"), "r") as file:
             config = yaml.safe_load(file)
 
         self.hub_iri = config["jupyter"]["hub"]
