@@ -1,4 +1,5 @@
 import requests
+
 from io import BufferedReader
 from typing import IO, TYPE_CHECKING, Union, Literal as L
 from tripper import Literal

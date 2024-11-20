@@ -1,10 +1,10 @@
 import json
 import os
 import requests
-from io import BufferedReader
-from typing import Union, Literal
-
 import yaml
+
+from io import BufferedReader
+from typing import Literal, Union
 
 from .fuseki import FusekiStrategy
 
