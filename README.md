@@ -58,12 +58,14 @@ from tripper import Triplestore
 ts = Triplestore(backend = "fuseki", 
                  base_iri = "http://example.com/myontology#", 
                  triplestore_url = "http://localhost:3030", 
-                 database = "database"
+                 database = "database",
+                 graph = "http://some_graph"
 )
 ```
 * **base_iri**: the base IRI to start with (if it is not defined)
 * **triplestore_url**: the Fuseki service endpoint
 * **database**: the name of the database to use
+* **graph (optional)**: the graph to use
 
 ### OMIKB
 ```python
@@ -72,12 +74,13 @@ from tripper import Triplestore
 ts = Triplestore(backend = "omikb", 
                  base_iri = "http://example.com/myontology#", 
                  triplestore_url = "http://openmodel.app/data", 
-                 database = "dataset"
+                 database = "dataset",
+                 graph = "http://some_graph"
 )
 ```
 * **base_iri**: the base IRI to start with (if it is not defined)
 * **triplestore_url**: the OpenModel KB endpoint
 * **database**: the name of the database to use
-
+* **graph (optional)**: the graph to use
 
 
