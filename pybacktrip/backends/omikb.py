@@ -95,7 +95,11 @@ class OmikbStrategy(FusekiStrategy):
             print("Method unknown")
             return {}
 
-        ep = self.endpoint[method]
+        ep = (
+            self.endpoint[method]
+            if not graph
+            else f"{self.endpoint[method]}?graph={self.graph}"
+        )
 
         if prefix and isinstance(cmd, str):
             cmd = (
