@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 
 class FusekiStrategy:
-    __GRAPH = "graph://main"
     __CONTENT_TYPES = {"turtle": "text/turtle", "rdf": "application/rdf+xml"}
     __DEFAULT_NAMESPACES = {
         "owl": "http://www.w3.org/2002/07/owl#",
@@ -19,6 +18,10 @@ class FusekiStrategy:
         "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
         "schema": "http://schema.org/",
     }
+
+    # DEFAULT GRAPH
+
+    __graph = "graph://main"
 
     # DEFAULT METHODS
 
@@ -36,6 +39,7 @@ class FusekiStrategy:
             triplestoreUrl (str): URL of the Triplestore.
             database (str): Database of the Triplestore to be used.
             kwargs (object): Additional keyword arguments passed to the backend.
+                             I.e. `graph` to use a specific graph rather than the default one.
         """
 
         self.__namespaces = {}
@@ -44,7 +48,11 @@ class FusekiStrategy:
         self.__namespaces.update(self.__DEFAULT_NAMESPACES)
         self.__namespaces[""] = base_iri
         self.sparql_endpoint = f"{triplestore_url}/{database}"
-        self.graph = self.__GRAPH
+
+        if "graph" in kwargs:
+            FusekiStrategy.__graph = kwargs["graph"]
+
+        self.graph = FusekiStrategy.__graph
 
     def triples(self, triple: "Triple") -> "Generator":
         """Execute query on triples
@@ -81,7 +89,7 @@ class FusekiStrategy:
         )
         cmd = f"""
             SELECT {" ".join(variables)}
-            FROM <{self.__GRAPH}>
+            FROM <{self.graph}>
             WHERE {{{whereSpec}}}
         """
 
@@ -128,7 +136,7 @@ class FusekiStrategy:
             for triple in triples
         )
 
-        cmd = f"INSERT DATA {{ GRAPH <{self.__GRAPH}> {{ {spec} }} }}"
+        cmd = f"INSERT DATA {{ GRAPH <{self.graph}> {{ {spec} }} }}"
         headers = {"Content-Type": "application/sparql-update"}
         return self._request("POST", cmd, headers=headers, plainData=True, graph=True)
 
@@ -162,7 +170,7 @@ class FusekiStrategy:
             )
             for name, value in zip("spo", triple)
         )
-        cmd = f"DELETE WHERE {{ GRAPH <{self.__GRAPH}> {{ { spec } }} }}"
+        cmd = f"DELETE WHERE {{ GRAPH <{self.graph}> {{ { spec } }} }}"
 
         return self._request("POST", cmd)
 
@@ -250,9 +258,7 @@ class FusekiStrategy:
         """
 
         iw = query_object.index("WHERE")
-        queryStr = (
-            f"{query_object[:iw]}FROM <{self.__GRAPH}> {query_object[iw:]}".strip()
-        )
+        queryStr = f"{query_object[:iw]}FROM <{self.graph}> {query_object[iw:]}".strip()
 
         res = self._request("GET", queryStr)
 
@@ -314,7 +320,7 @@ class FusekiStrategy:
             kwargs: Keyword arguments passed to the backend remove_database() method.
         """
 
-        requests.delete(f"{triplestore_url}/{database}?graph={cls.__GRAPH}")
+        requests.delete(f"{triplestore_url}/{database}?graph={cls.__graph}")
 
     @classmethod
     def list_databases(cls, **kwargs) -> str:
@@ -325,7 +331,7 @@ class FusekiStrategy:
             kwargs: Keyword arguments passed to the backend list_database() method.
         """
 
-        return cls.__GRAPH
+        return cls.__graph
 
     # PROTECTED METHODS
 
