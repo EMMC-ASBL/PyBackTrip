@@ -38,6 +38,7 @@ class FusekiStrategy:
             triplestoreUrl (str): URL of the Triplestore.
             database (str): Database of the Triplestore to be used.
             kwargs (object): Additional keyword arguments passed to the backend.
+                             I.e. `graph` to use a specific graph rather than the default one.
         """
 
         self.__namespaces = {}
